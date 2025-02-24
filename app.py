@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 from sklearn.metrics.pairwise import cosine_similarity
 from bson import ObjectId
-from src import get_faiss_id_from_mongo_id, get_dimension, get_vectors_by_ids
+from src.utils.faiss import FaissService
+from src.utils.cache_utils import load_model, get_mongo_client
 
 
 # set streamlit page config as the first statement
@@ -53,7 +54,7 @@ FAISS_INDEX_PATHS = {
 
 # Load FAISS Index
 def load_faiss_index(path):
-    dimension = get_dimension()
+    dimension = FaissService.get_dimension()
     if os.path.exists(path):
         return faiss.read_index(path)
     else:
@@ -117,7 +118,7 @@ def process_paper(paper_json):
             "reference": dataset.get("reference", "No reference available"),
         }
         dataset_id = str(collection_nodes_datasets.insert_one(dataset_obj).inserted_id)
-        numeric_dataset_id = get_faiss_id_from_mongo_id(dataset_id[-8:])
+        numeric_dataset_id = FaissService.get_faiss_id_from_mongo_id(dataset_id[-8:])
         dataset_embedding = model.encode(
             dataset["title"] + " " + dataset["description"]
         ).astype("float32")
@@ -146,7 +147,7 @@ def process_paper(paper_json):
         if not same_task_flag:
             task_id = str(collection_nodes_tasks.insert_one(task_obj).inserted_id)
             pass_task_obj_ids.append(task_id)
-        numeric_task_id = get_faiss_id_from_mongo_id(task_id)
+        numeric_task_id = FaissService.get_faiss_id_from_mongo_id(task_id)
         if not same_task_flag:
             collection_nodes_tasks.update_one(
                 {"_id": task_id}, {"$set": {"faiss_index_id": numeric_task_id}}
@@ -179,13 +180,16 @@ def merge_tasks(
 ):
     task_data = list(collection_nodes_tasks.find({}, {"_id": 1, "task": 1}))
     task_id_map = {
-        str(doc["_id"]): get_faiss_id_from_mongo_id(doc["_id"]) for doc in task_data
+        str(doc["_id"]): FaissService.get_faiss_id_from_mongo_id(doc["_id"])
+        for doc in task_data
     }
     task_keyword_map = {str(doc["_id"]): set(doc.get("task", [])) for doc in task_data}
     task_nodes = list(task_id_map.keys())
     faiss_ids = np.array(list(task_id_map.values()), dtype=int)
 
-    all_vectors = get_vectors_by_ids(faiss_index_task_descriptions, faiss_ids)
+    all_vectors = FaissService.get_vectors_by_ids(
+        faiss_index_task_descriptions, faiss_ids
+    )
     k = min(max_merge, len(task_nodes))
     D, I = faiss_index_task_descriptions.search(all_vectors, k)
 
@@ -227,9 +231,52 @@ def merge_tasks(
     return "Merge tasks complete"
 
 
+def text_to_vector(text):
+    return model.encode(text).astype("float32")
+
+
+def perform_search(task_description, faiss_index, graph, top_k=5):
+    query_vector = text_to_vector(task_description)
+    _, indices = faiss_index.search(query_vector.reshape(1, -1), 1)
+    closest_faiss_id = indices[0][0]
+    matched_task_nodes = []
+    for task in collection_nodes_tasks.find():
+        task_id_hex = int(str(task["_id"])[-8:], 16)
+        if task_id_hex == closest_faiss_id:
+            bert_vector = text_to_vector(task.get("task_description", "")).reshape(
+                1, -1
+            )
+            faiss_vector = FaissService.get_vectors_by_ids(faiss_index, [task_id_hex])[
+                0
+            ].reshape(1, -1)
+            similarity = cosine_similarity(bert_vector, faiss_vector)
+            if similarity > 0.95:
+                matched_task_nodes.append(str(task["_id"]))
+    related_task_nodes = set()
+    for task_node in matched_task_nodes:
+        if task_node in graph:
+            paths = nx.single_source_dijkstra_path_length(graph, task_node)
+            sorted_paths = sorted(paths.items(), key=lambda x: x[1])
+            related_task_nodes.update([node for node, weight in sorted_paths[:top_k]])
+    related_datasets = set()
+    dataset_nodes = set(map(str, collection_nodes_datasets.distinct("_id")))
+    for task_node in related_task_nodes:
+        for neighbor in graph.neighbors(task_node):
+            if neighbor in dataset_nodes:
+                related_datasets.add(neighbor)
+    print(related_datasets)
+    dataset_results = list(
+        collection_nodes_datasets.find(
+            {"_id": {"$in": [ObjectId(d) for d in related_datasets]}}
+        )
+    )
+    print(dataset_results)
+    return dataset_results
+
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choose Your Page", ["Import", "Manage DB"])
+page = st.sidebar.radio("Choose Your Page", ["Import", "Manage DB", "Search"])
 
 # Import Page
 if page == "Import":
@@ -396,3 +443,14 @@ elif page == "Manage DB":
 
                 # Display in Streamlit
                 result_area.pyplot(fig)
+elif page == "Search":
+    st.title("Search for Datasets")
+    dataset_query = st.text_input("Enter your search query:", "")
+    if st.button("Search"):
+        if dataset_query.strip():
+            st.session_state["search_results"] = perform_search(
+                dataset_query, faiss_index_task_descriptions, graph
+            )
+            st.write(st.session_state["search_results"])
+        else:
+            st.warning("Please enter a search query.")
