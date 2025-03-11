@@ -12,27 +12,16 @@ from matplotlib.colors import to_rgba
 from sklearn.metrics.pairwise import cosine_similarity
 from bson import ObjectId
 from src.utils.faiss import FaissService
+from src.utils.graph import GraphService
 from src.utils.cache_utils import load_model, get_mongo_client
-
+from src.utils.paper_processor import PaperProcessor
+from src.utils.bert import BertService
+from src.pages.search import SearchPage
 
 # set streamlit page config as the first statement
 st.set_page_config(page_title="Task-Oriented Dataset Search", layout="wide")
 
-
-# Load BERT Transformer
-@st.cache_resource
-def load_model():
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
-
 model = load_model()
-
-
-# Load MongoDB Connection
-@st.cache_resource
-def get_mongo_client():
-    return MongoClient("mongodb://tods_mongodb:27017/")
-
 
 client = get_mongo_client()
 db = client["paperdatabase"]
@@ -42,133 +31,19 @@ collection_nodes_papers = db["papers"]
 collection_nodes_datasets = db["datasets"]
 collection_nodes_tasks = db["tasks"]
 
-# FAISS Index Paths
-FAISS_DIR = "data/faiss"
-os.makedirs(FAISS_DIR, exist_ok=True)
-FAISS_INDEX_PATHS = {
-    "datasets": os.path.join(FAISS_DIR, "datasets.idx"),
-    "task_descriptions": os.path.join(FAISS_DIR, "task_descriptions.idx"),
-    "task_keywords": os.path.join(FAISS_DIR, "task_keywords.idx"),
-}
+faiss_index_paths = FaissService.faiss_init()
 
+faiss_index_datasets = FaissService.load_faiss_index(faiss_index_paths["datasets"])
+faiss_index_task_descriptions = FaissService.load_faiss_index(
+    faiss_index_paths["task_descriptions"]
+)
+faiss_index_task_keywords = FaissService.load_faiss_index(
+    faiss_index_paths["task_keywords"]
+)
 
-# Load FAISS Index
-def load_faiss_index(path):
-    dimension = FaissService.get_dimension()
-    if os.path.exists(path):
-        return faiss.read_index(path)
-    else:
-        return faiss.IndexIDMap(faiss.IndexFlatIP(dimension))
+graph_path = GraphService.graph_init()
 
-
-faiss_index_datasets = load_faiss_index(FAISS_INDEX_PATHS["datasets"])
-faiss_index_task_descriptions = load_faiss_index(FAISS_INDEX_PATHS["task_descriptions"])
-faiss_index_task_keywords = load_faiss_index(FAISS_INDEX_PATHS["task_keywords"])
-
-
-# Save FAISS Index
-def save_faiss_index():
-    faiss.write_index(faiss_index_datasets, FAISS_INDEX_PATHS["datasets"])
-    faiss.write_index(
-        faiss_index_task_descriptions, FAISS_INDEX_PATHS["task_descriptions"]
-    )
-    faiss.write_index(faiss_index_task_keywords, FAISS_INDEX_PATHS["task_keywords"])
-
-
-# GraphML Path
-GRAPH_PATH = "data/graph/graph.graphml"
-os.makedirs(os.path.dirname(GRAPH_PATH), exist_ok=True)
-
-
-# Load Graph
-def load_graph():
-    if os.path.exists(GRAPH_PATH):
-        return nx.read_graphml(GRAPH_PATH)
-    return nx.Graph()
-
-
-graph = load_graph()
-
-
-# Save Graph
-def save_graph():
-    nx.write_graphml(graph, GRAPH_PATH)
-
-
-# Process Papers
-def process_paper(paper_json):
-    paper_json = paper_json["content"]
-    paper_id = str(
-        collection_nodes_papers.insert_one(
-            {
-                "title": paper_json.get("title", "Unknown"),
-                "authors": paper_json.get("authors", "Unknown"),
-                "year": paper_json.get("year", "Unknown"),
-                "url": paper_json.get("url", "Unknown"),
-            }
-        ).inserted_id
-    )
-
-    pass_task_obj_ids = []
-    for dataset in paper_json.get("datasets", []):
-        dataset_obj = {
-            "title": dataset.get("title", "Unknown"),
-            "description": dataset.get("description", "No description available"),
-            "link": dataset.get("link", "No link available"),
-            "reference": dataset.get("reference", "No reference available"),
-        }
-        dataset_id = str(collection_nodes_datasets.insert_one(dataset_obj).inserted_id)
-        numeric_dataset_id = FaissService.get_faiss_id_from_mongo_id(dataset_id[-8:])
-        dataset_embedding = model.encode(
-            dataset["title"] + " " + dataset["description"]
-        ).astype("float32")
-        faiss_index_datasets.add_with_ids(
-            np.array([dataset_embedding]), numeric_dataset_id
-        )
-
-        task_obj = {
-            "task": dataset["task"],
-            "task_description": dataset["task_description"],
-        }
-        same_task_flag = False
-        for id in pass_task_obj_ids:
-            pass_task_obj = collection_nodes_tasks.find_one({"_id": ObjectId(id)})
-            task = pass_task_obj.get("task", ["Unknown"])
-            task_description = pass_task_obj.get(
-                "task_description", "No description available"
-            )
-            if (
-                set(task) == set(dataset["task"])
-                or task_description == dataset["task_description"]
-            ):
-                task_id = id
-                same_task_flag = True
-                break
-        if not same_task_flag:
-            task_id = str(collection_nodes_tasks.insert_one(task_obj).inserted_id)
-            pass_task_obj_ids.append(task_id)
-        numeric_task_id = FaissService.get_faiss_id_from_mongo_id(task_id)
-        if not same_task_flag:
-            collection_nodes_tasks.update_one(
-                {"_id": task_id}, {"$set": {"faiss_index_id": numeric_task_id}}
-            )
-            task_description_embedding = model.encode(
-                dataset["task_description"]
-            ).astype("float32")
-            faiss_index_task_descriptions.add_with_ids(
-                np.array([task_description_embedding]), numeric_task_id
-            )
-            task_keywords_embeddidng = model.encode(", ".join(dataset["task"])).astype(
-                "float32"
-            )
-            faiss_index_task_keywords.add_with_ids(
-                np.array([task_keywords_embeddidng]), numeric_task_id
-            )
-
-        graph.add_edge(dataset_id, task_id)
-        graph.add_edge(paper_id, dataset_id)
-
-    return f"Paper `{paper_json['title']}` processed successfully!"
+graph = GraphService.load_graph(graph_path)
 
 
 # Merge tasks
@@ -227,51 +102,8 @@ def merge_tasks(
                     cnt += 1
 
     print(f"{cnt} pairs of tasks merged among {len(task_nodes)} tasks")
-    save_graph()
+    GraphService.save_graph(graph, graph_path)
     return "Merge tasks complete"
-
-
-def text_to_vector(text):
-    return model.encode(text).astype("float32")
-
-
-def perform_search(task_description, faiss_index, graph, top_k=5):
-    query_vector = text_to_vector(task_description)
-    _, indices = faiss_index.search(query_vector.reshape(1, -1), 1)
-    closest_faiss_id = indices[0][0]
-    matched_task_nodes = []
-    for task in collection_nodes_tasks.find():
-        task_id_hex = int(str(task["_id"])[-8:], 16)
-        if task_id_hex == closest_faiss_id:
-            bert_vector = text_to_vector(task.get("task_description", "")).reshape(
-                1, -1
-            )
-            faiss_vector = FaissService.get_vectors_by_ids(faiss_index, [task_id_hex])[
-                0
-            ].reshape(1, -1)
-            similarity = cosine_similarity(bert_vector, faiss_vector)
-            if similarity > 0.95:
-                matched_task_nodes.append(str(task["_id"]))
-    related_task_nodes = set()
-    for task_node in matched_task_nodes:
-        if task_node in graph:
-            paths = nx.single_source_dijkstra_path_length(graph, task_node)
-            sorted_paths = sorted(paths.items(), key=lambda x: x[1])
-            related_task_nodes.update([node for node, weight in sorted_paths[:top_k]])
-    related_datasets = set()
-    dataset_nodes = set(map(str, collection_nodes_datasets.distinct("_id")))
-    for task_node in related_task_nodes:
-        for neighbor in graph.neighbors(task_node):
-            if neighbor in dataset_nodes:
-                related_datasets.add(neighbor)
-    print(related_datasets)
-    dataset_results = list(
-        collection_nodes_datasets.find(
-            {"_id": {"$in": [ObjectId(d) for d in related_datasets]}}
-        )
-    )
-    print(dataset_results)
-    return dataset_results
 
 
 # Sidebar Navigation
@@ -393,10 +225,27 @@ elif page == "Manage DB":
             if st.button("Process Papers"):
                 papers = list(collection_regular_paper.find({}))
                 for paper in papers:
-                    result_area.write(process_paper(paper))
+                    result_area.write(
+                        PaperProcessor.process_regular_paper(
+                            model,
+                            paper,
+                            collection_nodes_papers,
+                            collection_nodes_datasets,
+                            collection_nodes_tasks,
+                            faiss_index_datasets,
+                            faiss_index_task_descriptions,
+                            faiss_index_task_keywords,
+                            graph,
+                        )
+                    )
                 merge_tasks()
-                save_faiss_index()
-                save_graph()
+                FaissService.save_faiss_index(
+                    faiss_index_paths,
+                    faiss_index_datasets,
+                    faiss_index_task_descriptions,
+                    faiss_index_task_keywords,
+                )
+                GraphService.save_graph(graph, graph_path)
                 result_area.success(
                     "All papers processed, indexed, and graph updated successfully!"
                 )
@@ -404,7 +253,7 @@ elif page == "Manage DB":
         with col4:
             if st.button("Show Graph Visualization"):
                 # Load the graph from GraphML
-                graph = load_graph()
+                graph = GraphService.load_graph(graph_path)
                 node_colors = []
                 color_map = {
                     "papers": "lightblue",
@@ -444,13 +293,10 @@ elif page == "Manage DB":
                 # Display in Streamlit
                 result_area.pyplot(fig)
 elif page == "Search":
-    st.title("Search for Datasets")
-    dataset_query = st.text_input("Enter your search query:", "")
-    if st.button("Search"):
-        if dataset_query.strip():
-            st.session_state["search_results"] = perform_search(
-                dataset_query, faiss_index_task_descriptions, graph
-            )
-            st.write(st.session_state["search_results"])
-        else:
-            st.warning("Please enter a search query.")
+    SearchPage.page_search(
+        faiss_index_task_descriptions,
+        graph,
+        collection_nodes_tasks,
+        collection_nodes_datasets,
+        model,
+    )
