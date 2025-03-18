@@ -1,4 +1,5 @@
 import streamlit as st
+import math
 import networkx as nx
 from src.utils.bert import BertService
 from src.utils.faiss import FaissService
@@ -16,6 +17,7 @@ class SearchPage:
         task_description: str,
         faiss_index: faiss.IndexIDMap,
         graph: nx.Graph,
+        graph_tasks: nx.Graph,
         collection_nodes_tasks: pymongo.collection.Collection,
         collection_nodes_datasets: pymongo.collection.Collection,
         model: SentenceTransformer,
@@ -39,12 +41,18 @@ class SearchPage:
                     matched_task_nodes.append(str(task["_id"]))
         related_task_nodes = set()
         for task_node in matched_task_nodes:
-            if task_node in graph:
-                paths = nx.single_source_dijkstra_path_length(graph, task_node)
-                sorted_paths = sorted(paths.items(), key=lambda x: x[1])
-                related_task_nodes.update(
-                    [node for node, weight in sorted_paths[:top_k]]
-                )
+            related_task_nodes.update([task_node])
+            if top_k > 0:
+                if task_node in graph_tasks:
+                    paths = nx.single_source_dijkstra_path_length(
+                        graph_tasks, task_node
+                    )
+                    sorted_paths = sorted(
+                        paths.items(), key=lambda x: math.exp(-x[1]), reverse=True
+                    )
+                    related_task_nodes.update(
+                        [node for node, weight in sorted_paths[:top_k]]
+                    )
         related_datasets = set()
         dataset_nodes = set(map(str, collection_nodes_datasets.distinct("_id")))
         for task_node in related_task_nodes:
@@ -62,6 +70,7 @@ class SearchPage:
     def page_search(
         faiss_index_task_descriptions: faiss.IndexIDMap,
         graph: nx.Graph,
+        graph_tasks: nx.Graph,
         collection_node_tasks: pymongo.collection.Collection,
         collection_node_datasets: pymongo.collection.Collection,
         model: SentenceTransformer,
@@ -74,6 +83,7 @@ class SearchPage:
                     dataset_query,
                     faiss_index_task_descriptions,
                     graph,
+                    graph_tasks,
                     collection_node_tasks,
                     collection_node_datasets,
                     model,

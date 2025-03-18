@@ -17,6 +17,8 @@ from src.utils.cache_utils import load_model, get_mongo_client
 from src.utils.paper_processor import PaperProcessor
 from src.utils.bert import BertService
 from src.pages.search import SearchPage
+import math
+import random
 
 # set streamlit page config as the first statement
 st.set_page_config(page_title="Task-Oriented Dataset Search", layout="wide")
@@ -44,6 +46,22 @@ faiss_index_task_keywords = FaissService.load_faiss_index(
 graph_path = GraphService.graph_init()
 
 graph = GraphService.load_graph(graph_path)
+
+
+task_nodes = [str(doc["_id"]) for doc in collection_nodes_tasks.find({}, {"_id": 1})]
+task_graph = graph.subgraph(task_nodes).copy()
+task_graph_neglog = nx.Graph()
+for u, v, data in task_graph.edges(data=True):
+    weight = data.get("weight", 0)
+    if weight > 0:
+        task_graph_neglog.add_edge(u, v, weight=-math.log(weight))
+
+print(
+    f"Original Graph: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges"
+)
+print(
+    f"Filtered Graph: {task_graph_neglog.number_of_nodes()} nodes, {task_graph_neglog.number_of_edges()} edges"
+)
 
 
 # Merge tasks
@@ -106,9 +124,159 @@ def merge_tasks(
     return "Merge tasks complete"
 
 
+def get_similar_datasets(similarity_threshold: float = 0.3, max_merge: int = 15):
+    dataset_data = list(collection_nodes_datasets.find({}, {"_id": 1}))
+    dataset_id_map = {
+        str(doc["_id"]): FaissService.get_faiss_id_from_mongo_id(doc["_id"])
+        for doc in dataset_data
+    }
+    dataset_nodes = list(dataset_id_map.keys())
+    faiss_ids = np.array(list(dataset_id_map.values()), dtype=int)
+    all_vectors = FaissService.get_vectors_by_ids(faiss_index_datasets, faiss_ids)
+    k = min(max_merge, len(dataset_nodes))
+    D, I = faiss_index_datasets.search(all_vectors, k)
+
+    cnt = 0
+    similar_dataset_id_pairs = []
+    for idx, dataset1_id in enumerate(dataset_nodes):
+        for j, faiss_idx in enumerate(I[idx]):
+            if faiss_idx == -1 or D[idx, j] < similarity_threshold:
+                continue
+            dataset2_id = next(
+                (key for key, value in dataset_id_map.items() if value == faiss_idx),
+                None,
+            )
+            if not dataset2_id or dataset1_id == dataset2_id:
+                continue
+
+            dataset1_document = collection_nodes_datasets.find_one(
+                {"_id": ObjectId(dataset1_id)}
+            )
+            dataset2_document = collection_nodes_datasets.find_one(
+                {"_id": ObjectId(dataset2_id)}
+            )
+
+            if (
+                dataset1_document["link"] == dataset2_document["link"]
+                and dataset1_document["link"] != "None"
+            ) or dataset1_document["title"] == dataset2_document["title"]:
+                similar_dataset_id_pairs.append((dataset1_id, dataset2_id))
+
+    unique_pairs = [
+        tuple(pair) for pair in {frozenset(pair) for pair in similar_dataset_id_pairs}
+    ]
+    return unique_pairs, len(unique_pairs)
+
+
+def benchmark():
+    dataset_nodes = [
+        str(doc["_id"]) for doc in collection_nodes_datasets.find({}, {"_id": 1})
+    ]
+    task_nodes = [
+        str(doc["_id"]) for doc in collection_nodes_tasks.find({}, {"_id": 1})
+    ]
+    similar_pairs, num_similar = get_similar_datasets()
+    graph_copy = graph.copy()
+    faiss_index_copy = faiss.clone_index(faiss_index_task_descriptions)
+    for u, v in similar_pairs:
+        if u not in graph_copy or v not in graph_copy:
+            continue
+        neighbors_v = list(graph_copy.neighbors(v))
+        for neighbor in neighbors_v:
+            if neighbor == u:
+                continue
+            weight_vn = graph_copy[v][neighbor].get("weight", 1)
+            if graph_copy.has_edge(u, neighbor):
+                weight_un = graph_copy[u][neighbor].get("weight", 1)
+                graph_copy[u][neighbor]["weight"] = max(weight_un, weight_vn)
+            else:
+                graph_copy.add_edge(u, neighbor, weight=weight_vn)
+        graph_copy.remove_node(v)
+    print(f"Original Graph: {graph.number_of_nodes()} nodes")
+    print(f"Benchmark Graph: {graph_copy.number_of_nodes()} nodes")
+
+    benchmark_pairs = []
+    for _ in range(50):
+        candidate_nodes = []
+        for node in dataset_nodes:
+            if node in graph_copy and len(set(graph_copy[node]) & set(task_nodes)) >= 2:
+                candidate_nodes.append(node)
+        if not candidate_nodes:
+            print("No more dataset nodes with 2 or more tasks")
+            break
+        random_dataset_node = random.choice(candidate_nodes)
+        connected_task_nodes = list(
+            set(graph_copy[random_dataset_node]) & set(task_nodes)
+        )
+        selected_task_node = random.choice(connected_task_nodes)
+        selected_task_node_objid = ObjectId(selected_task_node)
+        task_info = collection_nodes_tasks.find_one(
+            {"_id": selected_task_node_objid}, {"task_description": 1}
+        )
+        if task_info and "task_description" in task_info:
+            task_description = task_info["task_description"]
+            benchmark_pairs.append(
+                (task_description, random_dataset_node, selected_task_node)
+            )
+            graph_copy.remove_node(selected_task_node)
+            faiss_id = FaissService.get_faiss_id_from_mongo_id(selected_task_node)
+            faiss_index_copy.remove_ids(np.array([faiss_id], dtype=np.int64))
+
+    # print(f"{len(benchmark_pairs)} pairs of (task_description, dataset_node)")
+
+    benchmark_task_nodes_raw = [
+        str(doc["_id"]) for doc in collection_nodes_tasks.find({}, {"_id": 1})
+    ]
+    benchmark_task_nodes = [id for id in benchmark_task_nodes_raw if id in graph_copy]
+    benchmark_task_graph = graph_copy.subgraph(benchmark_task_nodes).copy()
+    # print(len(benchmark_task_nodes_raw), len(benchmark_task_nodes))
+    benchmark_task_graph_neglog = nx.Graph()
+    for u, v, data in benchmark_task_graph.edges(data=True):
+        weight = data.get("weight", 0)
+        if weight > 0:
+            benchmark_task_graph_neglog.add_edge(u, v, weight=-math.log(weight))
+
+    # print(
+    #     f"Benchmark Original Graph: {graph_copy.number_of_nodes()} nodes, {graph_copy.number_of_edges()} edges"
+    # )
+    # print(
+    #     f"Benchmark Filtered Graph: {benchmark_task_graph_neglog.number_of_nodes()} nodes, {benchmark_task_graph_neglog.number_of_edges()} edges"
+    # )
+
+    num_pairs = len(benchmark_pairs)
+    cnt_pass_results = 0
+
+    deleted_tasks = [item[2] for item in benchmark_pairs]
+
+    for benchmark_pair in benchmark_pairs:
+        task_des = benchmark_pair[0]
+        baseline = benchmark_pair[1]
+        # print(
+        #     f"Testing original task node {benchmark_pair[2]} with baseline {benchmark_pair[1]} and task desc {benchmark_pair[0]}"
+        # )
+        results = SearchPage.perform_search(
+            task_des,
+            faiss_index_copy,
+            graph_copy,
+            benchmark_task_graph_neglog,
+            collection_nodes_tasks,
+            collection_nodes_datasets,
+            model,
+            top_k=3,
+        )
+        results_ids = [str(result["_id"]) for result in results]
+        # print("Results:", results_ids)
+        if baseline in results_ids:
+            cnt_pass_results += 1
+    print(f"Accuracy: {cnt_pass_results / num_pairs}")
+
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choose Your Page", ["Import", "Manage DB", "Search"])
+page = st.sidebar.radio(
+    "Choose Your Page",
+    ["Import", "Manage DB", "Search", "Similar Datasets", "Benchmark"],
+)
 
 # Import Page
 if page == "Import":
@@ -296,7 +464,32 @@ elif page == "Search":
     SearchPage.page_search(
         faiss_index_task_descriptions,
         graph,
+        task_graph_neglog,
         collection_nodes_tasks,
         collection_nodes_datasets,
         model,
     )
+elif page == "Similar Datasets":
+    if st.button("Get Similar Datasets"):
+        similar_datasets, cnt = get_similar_datasets()
+        # print(similar_datasets)
+        print(cnt)
+        similar_datasets_in_paper = {}
+        paper_nodes = set(map(str, collection_nodes_papers.distinct("_id")))
+        for similar_pair in similar_datasets:
+            # task1_id = FaissService.get_faiss_id_from_mongo_id(similar_pair[0])
+            # task2_id = FaissService.get_faiss_id_from_mongo_id(similar_pair[1])
+            task1_id = similar_pair[0]
+            task2_id = similar_pair[1]
+            for task_id in [task1_id, task2_id]:
+                neighbors = set(graph.neighbors(task_id))
+                paper_neighbors = [node for node in neighbors if node in paper_nodes]
+                if len(paper_neighbors) == 1:
+                    if paper_neighbors[0] in similar_datasets_in_paper:
+                        similar_datasets_in_paper[paper_neighbors[0]].append(task_id)
+                    else:
+                        similar_datasets_in_paper[paper_neighbors[0]] = [task_id]
+        print(similar_datasets_in_paper)
+elif page == "Benchmark":
+    if st.button("Run Benchmark"):
+        benchmark()
