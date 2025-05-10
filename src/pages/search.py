@@ -13,11 +13,11 @@ from sentence_transformers import SentenceTransformer
 class SearchPage:
 
     @staticmethod
-    def perform_search(
+    def search_dijkstra(
         task_description: str,
         faiss_index: faiss.IndexIDMap,
         graph: nx.Graph,
-        graph_tasks: nx.Graph,
+        graph_tasks_neglog: nx.Graph,
         collection_nodes_tasks: pymongo.collection.Collection,
         collection_nodes_datasets: pymongo.collection.Collection,
         model: SentenceTransformer,
@@ -43,9 +43,9 @@ class SearchPage:
         for task_node in matched_task_nodes:
             related_task_nodes.update([task_node])
             if top_k > 0:
-                if task_node in graph_tasks:
+                if task_node in graph_tasks_neglog:
                     paths = nx.single_source_dijkstra_path_length(
-                        graph_tasks, task_node
+                        graph_tasks_neglog, task_node
                     )
                     sorted_paths = sorted(
                         paths.items(), key=lambda x: math.exp(-x[1]), reverse=True
@@ -66,11 +66,126 @@ class SearchPage:
         )
         return dataset_results
 
+    def search_pagerank_new(
+        task_description: str,
+        faiss_index: faiss.IndexIDMap,
+        graph: nx.Graph,
+        graph_tasks_neglog: nx.Graph,
+        collection_nodes_tasks: pymongo.collection.Collection,
+        collection_nodes_datasets: pymongo.collection.Collection,
+        model: SentenceTransformer,
+        embed_top_k=3,
+        graph_top_k: int = 3,
+    ) -> list:
+        query_vector = BertService.text_to_vector(model, task_description)
+        _, indices = faiss_index.search(query_vector.reshape(1, -1), embed_top_k)
+        closest_faiss_ids = [indices[0][i] for i in range(embed_top_k)]
+
+        related_task_nodes = set()
+        for closest_faiss_id in closest_faiss_ids:
+            matched_task_nodes = []
+            for task in collection_nodes_tasks.find():
+                task_id_hex = int(str(task["_id"])[-8:], 16)
+                if task_id_hex == closest_faiss_id:
+                    bert_vector = BertService.text_to_vector(
+                        model, task.get("task_description", "")
+                    ).reshape(1, -1)
+                    faiss_vector = FaissService.get_vectors_by_ids(
+                        faiss_index, [task_id_hex]
+                    )[0].reshape(1, -1)
+                    similarity = cosine_similarity(bert_vector, faiss_vector)
+                    if similarity > 0.95:
+                        matched_task_nodes.append(str(task["_id"]))
+
+            personalization = {
+                node: 1.0 if node in matched_task_nodes else 0.001
+                for node in graph_tasks_neglog.nodes()
+            }
+            pagerank_scores = nx.pagerank(
+                graph_tasks_neglog, alpha=0.85, personalization=personalization
+            )
+
+            top_nodes = sorted(
+                pagerank_scores.items(), key=lambda x: x[1], reverse=True
+            )[:graph_top_k]
+            related_task_nodes.update(matched_task_nodes)
+            related_task_nodes.update([node for node, score in top_nodes])
+
+        related_datasets = set()
+        dataset_nodes = set(map(str, collection_nodes_datasets.distinct("_id")))
+        for task_node in related_task_nodes:
+            for neighbor in graph.neighbors(task_node):
+                if neighbor in dataset_nodes:
+                    related_datasets.add(neighbor)
+
+        dataset_results = list(
+            collection_nodes_datasets.find(
+                {"_id": {"$in": [ObjectId(d) for d in related_datasets]}}
+            )
+        )
+        return dataset_results
+
+    def search_pagerank(
+        task_description: str,
+        faiss_index: faiss.IndexIDMap,
+        graph: nx.Graph,
+        graph_tasks_neglog: nx.Graph,
+        collection_nodes_tasks: pymongo.collection.Collection,
+        collection_nodes_datasets: pymongo.collection.Collection,
+        model: SentenceTransformer,
+        top_k: int = 5,
+    ) -> list:
+        query_vector = BertService.text_to_vector(model, task_description)
+        _, indices = faiss_index.search(query_vector.reshape(1, -1), 1)
+        closest_faiss_id = indices[0][0]
+
+        matched_task_nodes = []
+        for task in collection_nodes_tasks.find():
+            task_id_hex = int(str(task["_id"])[-8:], 16)
+            if task_id_hex == closest_faiss_id:
+                bert_vector = BertService.text_to_vector(
+                    model, task.get("task_description", "")
+                ).reshape(1, -1)
+                faiss_vector = FaissService.get_vectors_by_ids(
+                    faiss_index, [task_id_hex]
+                )[0].reshape(1, -1)
+                similarity = cosine_similarity(bert_vector, faiss_vector)
+                if similarity > 0.95:
+                    matched_task_nodes.append(str(task["_id"]))
+
+        personalization = {
+            node: 1.0 if node in matched_task_nodes else 0.001
+            for node in graph_tasks_neglog.nodes()
+        }
+        pagerank_scores = nx.pagerank(
+            graph_tasks_neglog, alpha=0.85, personalization=personalization
+        )
+
+        top_nodes = sorted(pagerank_scores.items(), key=lambda x: x[1], reverse=True)[
+            :top_k
+        ]
+        related_task_nodes = set(matched_task_nodes)
+        related_task_nodes.update([node for node, score in top_nodes])
+
+        related_datasets = set()
+        dataset_nodes = set(map(str, collection_nodes_datasets.distinct("_id")))
+        for task_node in related_task_nodes:
+            for neighbor in graph.neighbors(task_node):
+                if neighbor in dataset_nodes:
+                    related_datasets.add(neighbor)
+
+        dataset_results = list(
+            collection_nodes_datasets.find(
+                {"_id": {"$in": [ObjectId(d) for d in related_datasets]}}
+            )
+        )
+        return dataset_results
+
     @staticmethod
     def page_search(
         faiss_index_task_descriptions: faiss.IndexIDMap,
         graph: nx.Graph,
-        graph_tasks: nx.Graph,
+        graph_tasks_neglog: nx.Graph,
         collection_node_tasks: pymongo.collection.Collection,
         collection_node_datasets: pymongo.collection.Collection,
         model: SentenceTransformer,
@@ -79,11 +194,11 @@ class SearchPage:
         dataset_query = st.text_input("Enter your search query:", "")
         if st.button("Search"):
             if dataset_query.strip():
-                st.session_state["search_results"] = SearchPage.perform_search(
+                st.session_state["search_results"] = SearchPage.search_pagerank(
                     dataset_query,
                     faiss_index_task_descriptions,
                     graph,
-                    graph_tasks,
+                    graph_tasks_neglog,
                     collection_node_tasks,
                     collection_node_datasets,
                     model,

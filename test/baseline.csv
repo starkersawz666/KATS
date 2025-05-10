@@ -1,0 +1,51 @@
+query,title,link
+Evaluating the performance of HSIVI-SM in generating high-quality handwritten digit samples with a small number of function evaluations (NFE).,MNIST,http://yann.lecun.com/exdb/mnist/
+"Assess HSIVI-SM's ability to accelerate diffusion model sampling while maintaining sample quality, measured via Frchet Inception Distance (FID).",CIFAR-10,https://www.cs.toronto.edu/~kriz/cifar.html
+"Demonstrate HSIVI-SM's effectiveness in generating diverse and high-quality face images with few sampling steps, compared to baseline methods like DDPM and DDIM.",CelebA,http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html
+"Predicting molecular properties (e.g., cLogP and SA-score) using graph-based models, testing the model's ability to capture local structural patterns in molecular graphs.",ZINC,https://paperswithcode.com/dataset/zinc
+"Predict the HOMO-LUMO energy gap of molecules, evaluating the model's ability to handle large-scale molecular graphs and quantum chemical properties.",PCQM4Mv2,https://ogb.stanford.edu/docs/lsc/pcqm4mv2/
+"Multi-label classification across 128 bioactivity assays, testing the model's capability to handle diverse molecular properties.",ogbg-molpcba,https://ogb.stanford.edu/docs/graphprop/#ogbg-molpcba
+"Multi-label classification to predict peptide functions, assessing the model's handling of long-range dependencies in biomolecular graphs.",Peptides-func,https://arxiv.org/abs/2206.08164
+"Regression to predict peptide structural properties, testing the model's ability to infer 3D structural information from 2D graphs.",Peptides-struct,https://arxiv.org/abs/2206.08164
+"Image classification tasks, where models are trained to predict the correct category of an image; Study the effects of data augmentation on model performance, including class-level accuracy and bias.",ImageNet,https://www.image-net.org/
+"Image classification, particularly for evaluating model performance on fine-grained categories; Study the impact of mixup augmentation on class-level accuracy and confusions within super-classes.",CIFAR-100,https://www.cs.toronto.edu/~kriz/cifar.html
+"Evaluating models on sentiment analysis tasks, where the goal is to classify the sentiment of a sentence or phrase as positive or negative.",SST-2 (Stanford Sentiment Treebank),https://nlp.stanford.edu/sentiment/
+"Evaluating models on duplicate question detection tasks, where the goal is to determine whether two questions are semantically equivalent.",QQP (Quora Question Pairs),https://www.quora.com/q/quoradata/First-Quora-Dataset-Release-Question-Pairs
+"Training and evaluating models on natural language inference tasks across multiple genres, aiming to generalize well to different types of text.",MNLI (Multi-Genre Natural Language Inference),https://cims.nyu.edu/~sbowman/multinli/
+Assessing image fidelity preservation after applying concept negation techniques by computing FID scores.,COCO (Common Objects in Context),https://cocodataset.org/
+Testing single-concept refusal performance by generating images and evaluating classification accuracy of erased classes.,Imagenette,https://github.com/fastai/imagenette
+"Few-shot learning and meta-learning tasks, where models must generalize from a small number of training examples per class; Standard image classification benchmarks.",miniImageNet,
+"Test the performance of multi-agent algorithms in complex, partially observable environments with a focus on coordination and tactical decision-making.",StarCraft Multi-Agent Challenge (SMAC),https://github.com/oxwhirl/smac
+"Evaluate multi-agent algorithms in dynamic, continuous environments requiring teamwork and strategic planning.",Google Research Football (GRF),https://github.com/google-research/football
+"Assess multi-agent algorithms in settings requiring implicit communication, reasoning, and cooperation under uncertainty.",Hanabi Challenge,https://github.com/deepmind/hanabi-learning-environment
+"Real-time semantic segmentation to evaluate the model's performance in urban environments, Pixel-level labeling of street scenes to identify objects like roads, buildings, and vehicles.",Cityscapes,https://www.cityscapes-dataset.com/
+"General semantic segmentation to evaluate the model's performance across a wide range of scenes, Pixel-level labeling of objects and stuff in complex environments.",ADE20K,http://groups.csail.mit.edu/vision/datasets/ADE20K/
+Pretraining and fine-tuning in self-supervised point cloud segmentation; Evaluates spatial and temporal consistency in LiDAR-camera cross-modal learning.,nuScenes,https://www.nuscenes.org/nuscenes
+A downstream task to validate the generalizability of pretrained models for semantic segmentation of outdoor LiDAR point clouds.,SemanticKITTI,http://semantic-kitti.org
+"Evaluates the transferability of pretrained models to diverse LiDAR configurations (e.g., multi-sensor setups).",Waymo Open Dataset,https://waymo.com/open
+"Assesses segmentation performance on dynamic objects (e.g., pedestrians, vehicles) in campus environments.",SemanticPOSS,https://www.poss.pku.edu.cn/semanticposs
+Training and evaluating generative models (StyleGAN2 and StyleSwin) and assessing fairness in generated samples with respect to sensitive attributes like Gender and BlackHair.,CelebA-HQ,https://github.com/tkarras/progressive_growing_of_gans
+"Served as the pretraining dataset for SDM, whose biases are later evaluated using CLEAM on generated samples.",LAION-5B,https://laion.ai/blog/laion-5b/
+"Binary graph classification, where the goal is to predict the anti-cancer activity of chemical compounds based on their molecular structure.",NCI1,https://paperswithcode.com/dataset/nci1
+"Graph classification tasks, where the goal is to predict the mutagenic effect of chemical compounds based on their molecular structure.",MUTAG,https://paperswithcode.com/dataset/mutag
+"Binary graph classification, where the goal is to predict whether a protein is an enzyme based on its structural graph representation.",PROTEINS,https://paperswithcode.com/dataset/proteins
+"Binary graph classification, where the goal is to predict the movie genre from the actor/actress collaboration network.",IMDB-BINARY,https://paperswithcode.com/dataset/imdb-binary
+"Pre-training visual representations (PVRs) for embodied AI tasks, including navigation and manipulation, by providing diverse egocentric interaction data.",Ego4D,https://ego4d-data.org/
+Binary classification tasks to assess GNNs' ability to predict molecular activity in HIV inhibition.,ogbg-molhiv,https://ogb.stanford.edu/docs/graphprop/#ogbg-molhiv
+"Evaluate GNNs on tasks such as graph classification, regression, and substructure prediction.",TUDataset,https://chrsmrrs.github.io/datasets/
+"Evaluates domain adaptation performance for object recognition, particularly in scenarios with large domain gaps (e.g., adapting from Real images to Sketch or Clipart domains).",DomainNet,http://ai.bu.edu/M3SDA/
+Provides pretrained initializations (supervised or self-supervised) for the ViT model before domain adaptation. The pretrained features are then fine-tuned or adapted to target domains like OfficeHome or DomainNet.,ImageNet-1K,https://www.image-net.org/
+"Evaluate the presence of specific objects (e.g., persons) in images, testing human-AI collaboration in object detection tasks.",MS-COCO,https://cocodataset.org/
+Attention checks in user studies to ensure participants are engaged and providing valid responses.,OpenBookQA,https://allenai.org/data/open-book-qa
+Training and evaluating the Next Best View (NBV) prediction model for dense 3D object reconstruction; benchmarking the performance of SCONE against state-of-the-art methods in constrained camera motion scenarios.,ShapeNet,https://www.shapenet.org/
+3D object detection and benchmarking model performance. Training and evaluation of models for detecting objects in sparse LiDAR point clouds and camera images.,KITTI Vision Benchmark Suite,https://www.cvlibs.net/datasets/kitti/
+"Pretraining the S3D backbone of the visual encoder in the proposed TwoStream-SLR model, helps the model learn general spatiotemporal features before fine-tuning on sign language datasets.",Kinetics-400,https://deepmind.com/research/open-source/kinetics
+"Training models like Pythia to study memorization, generalization, and the impact of diverse data sources on model performance.",The Pile,https://pile.eleuther.ai/
+"Training and evaluating language models, particularly GPT-2, to understand natural language processing capabilities and memorization patterns during training.",OpenWebText,https://skylion007.github.io/OpenWebTextCorpus/
+"Tests unsupervised object-centric learning in real-world, naturalistic video scenes with multiple dynamic objects.",Traffic,
+"Evaluate offline reinforcement learning algorithms in tasks such as locomotion control and navigation, where the goal is to learn a policy from pre-collected data without further interaction with the environment.",D4RL (Datasets for Deep Data-Driven Reinforcement Learning),https://github.com/rail-berkeley/d4rl
+"Training and testing action recognition models, including in privacy-preserving scenarios where the goal is to anonymize videos without degrading action recognition performance.",UCF101,https://www.crcv.ucf.edu/data/UCF101.php
+"Training and evaluating motion deblurring models; helps simulate real-world blur scenarios, including both camera shake and object motion, making it suitable for supervised deblurring tasks.",GoPro Dataset,https://seungjunnah.github.io/Datasets/gopro.html
+"Few-shot classification tasks in meta-learning, where the goal is to train a model to quickly adapt to new character recognition tasks with minimal examples.",Omniglo,https://github.com/brendenlake/omniglot
+Link prediction and node classification tasks to evaluate the performance of regularized node2vec embeddings compared to other methods like GCN and GraphSAGE.,Cora,
+Benchmarking the effectiveness of ?2-regularized node2vec embeddings in link prediction and node classification tasks against baseline and advanced graph embedding methods.,CiteSeer,
