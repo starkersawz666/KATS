@@ -1,0 +1,7 @@
+# Keywords Extraction Prompt
+
+You will be given a task description for a dataset. You need provide a list of 1~5 words that can best summarize the task, seperated by commas.
+
+A sample response is given below:
+
+keyword1,keyword2,keyword3.

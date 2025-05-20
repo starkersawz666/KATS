@@ -21,3 +21,4 @@ dist/
 # Logs and Temporary Files
 *.log
 *.tmp
+samples/

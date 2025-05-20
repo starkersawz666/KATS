@@ -1,0 +1,35 @@
+from typing import List, Dict, Any
+
+from openai import OpenAI
+
+
+class BaseLLMClient:
+
+    def chat(self, messages: List[Dict[str, str]], **options) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+
+class OpenAIClient(BaseLLMClient):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-4o-mini",
+        base_url: str | None = None,
+    ):
+        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        self._model = model
+
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        return self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )

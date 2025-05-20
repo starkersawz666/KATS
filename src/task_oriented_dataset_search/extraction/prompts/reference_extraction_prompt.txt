@@ -1,0 +1,13 @@
+# Reference Extraction Prompt
+
+Does the dataset __{dataset_name}__ have a corresponding reference in the bibliography? Please provide the reference in json format if available. 
+
+Sample output format:
+{
+    reference: "the content of the reference in string format"
+}
+
+If the reference is not available, your response should be:
+{
+    reference: None
+}

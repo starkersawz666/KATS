@@ -1,0 +1,61 @@
+{
+  "datasets_used": true,
+  "datasets": [
+    {
+      "title": "CAVE",
+      "description": "A benchmark dataset containing 32 hyperspectral images with spatial size of 512×512, commonly used for hyperspectral image reconstruction tasks. Data augmentation techniques like rotation and flipping are applied, producing 205 different training scenes.",
+      "task_description": "Serves as training data for hyperspectral image reconstruction models, providing ground truth spectral data for learning compressed sensing reconstruction.",
+      "link": "None",
+      "reference": "Yasuma, F., Mitsunaga, T., Iso, D., & Nayar, S. K. (2010). Generalized assorted pixel camera: postcapture control of resolution, dynamic range, and spectrum. IEEE transactions on image processing, 19(9), 2241-2253.",
+      "task": [
+        "hyperspectral",
+        "reconstruction",
+        "compressed",
+        "sensing",
+        "spectral"
+      ]
+    },
+    {
+      "title": "KAIST",
+      "description": "A simulation testing dataset containing ten 256×256×28 hyperspectral images, used for quantitative evaluation of hyperspectral reconstruction algorithms.",
+      "task_description": "Provides test data for evaluating the performance of hyperspectral reconstruction methods under simulated conditions.",
+      "link": "None",
+      "reference": "Choi, I., Kim, M. H., Gutierrez, D., Jeon, D. S., & Nam, G. (2017). High-quality hyperspectral reconstruction using a spectral prior. KAIST Technical Report.",
+      "task": [
+        "hyperspectral",
+        "reconstruction",
+        "simulation",
+        "performance",
+        "evaluation"
+      ]
+    },
+    {
+      "title": "Snapshot Spectral Heterogeneous Dataset (SSHD)",
+      "description": "A newly collected dataset containing practical SCI systems from three agencies, each offering unique coded aperture distributions. Represents real-world hardware variations in snapshot compressive imaging systems.",
+      "task_description": "Enables evaluation of reconstruction models across different hardware configurations and distributions, addressing practical heterogeneity challenges in spectral SCI.",
+      "link": "None",
+      "reference": "None",
+      "task": [
+        "reconstruction",
+        "hardware",
+        "spectral",
+        "heterogeneity",
+        "SCI"
+      ]
+    },
+    {
+      "title": "Real testing data from SD-CASSI system",
+      "description": "Real-world hyperspectral measurements collected by an SD-CASSI system with spatial size of 660×660, containing actual sensor noise and hardware imperfections.",
+      "task_description": "Provides real-world test cases for perceptual evaluation of reconstruction algorithms under practical hardware conditions.",
+      "link": "None",
+      "reference": "Meng, Z., Ma, J., & Yuan, X. (2020). End-to-end low cost compressive spectral imaging with spatial-spectral self-attention. In European Conference on Computer Vision (ECCV).",
+      "task": [
+        "perceptual",
+        "evaluation",
+        "reconstruction",
+        "hardware",
+        "algorithms"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Dataset Extraction Prompt
+
+You are a JSON extractor bot.
+Please provide a list of **datasets** used to help research in this paper in json format.
+
+Sample output format:
+[
+    {
+        title: the title of the dataset (the official name if available),
+        description: 50 - 100 words, a brief description of the dataset,
+        task: 50 - 100 words, a brief description of the task the dataset is used for,
+        link: the url of the dataset ('None' if not available),
+    },
+    {
+        title: ...,
+        description: ...,
+        task: ...,
+        link: ...,
+    }, ...
+]
+
+**Additional requirement for `task`:**  
+- The value must be a **predicate–object phrase** (i.e. no explicit subject).  
+- Do **not** start with “This dataset …” or “It …”.
