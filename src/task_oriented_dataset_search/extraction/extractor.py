@@ -23,7 +23,7 @@ class StandardExtractor(BaseExtractor):
             return f.read()
 
     @staticmethod
-    def _extract_json_from_response(response: str, del_comments=True):
+    def _extract_json_from_response_bracket(response: str, del_comments=True):
         start_index = end_index = -1
         if "[" in response:
             start_index = response.find("[")
@@ -40,9 +40,49 @@ class StandardExtractor(BaseExtractor):
         if start_index != -1 and end_index != -1:
             response = response[start_index : end_index + 1].replace("\_", "_")
         if del_comments:
-            return json.loads(re.sub(r"\/\/.*$", "", response, flags=re.MULTILINE))
+            return json.loads(
+                re.sub(r"\/\/.*$", "", response, flags=re.MULTILINE), strict=False
+            )
         else:
-            return json.loads(response)
+            return json.loads(response, strict=False)
+
+    @staticmethod
+    def _extract_json_from_response_brace(answer: str, del_comments=True):
+        start_index = end_index = -1
+        if "{" in answer:
+            start_index = answer.find("{")
+        elif "[" in answer:
+            start_index = answer.find("[")
+        else:
+            start_index = answer.find("```json") + 8
+        if "}" in answer:
+            end_index = answer.rfind("}")
+        elif "]" in answer:
+            end_index = answer.rfind("]")
+        else:
+            end_index = answer.rfind("```") - 1
+        if start_index != -1 and end_index != -1:
+            answer = answer[start_index : end_index + 1].replace("\_", "_")
+        if del_comments:
+            return json.loads(
+                re.sub(r"\/\/.*$", "", answer, flags=re.MULTILINE), strict=False
+            )
+        else:
+            return json.loads(answer, strict=False)
+
+    @staticmethod
+    def _extract_json_from_response(answer: str):
+        extract_funs = (
+            (StandardExtractor._extract_json_from_response_bracket, False),
+            (StandardExtractor._extract_json_from_response_brace, False),
+            (StandardExtractor._extract_json_from_response_bracket, True),
+            (StandardExtractor._extract_json_from_response_brace, True),
+        )
+        for fun in extract_funs:
+            try:
+                return fun[0](answer, fun[1])
+            except Exception as e:
+                pass
 
     def extract(
         self,
@@ -53,7 +93,7 @@ class StandardExtractor(BaseExtractor):
             "reference_extraction": "reference_extraction_prompt.txt",
             "keywords_extraction": "keywords_extraction_prompt.txt",
         },
-        **tpl_kwargs
+        **tpl_kwargs,
     ) -> ExtractionResult:
         messages = [
             {
@@ -70,6 +110,7 @@ class StandardExtractor(BaseExtractor):
                 "content": assistant_msg_dexi.content,
             }
         )
+
         json_dexi = self._extract_json_from_response(assistant_msg_dexi.content)
         flag_dataset_used = list(json_dexi.values())[0]
         if not flag_dataset_used:
@@ -90,6 +131,7 @@ class StandardExtractor(BaseExtractor):
             }
         )
         json_dext = self._extract_json_from_response(assistant_msg_dext.content)
+
         result: ExtractionResult = {"datasets_used": True, "datasets": []}
         for dataset in json_dext:
             result["datasets"].append(
@@ -101,20 +143,20 @@ class StandardExtractor(BaseExtractor):
                 }
             )
 
-        for dataset in result["datasets"]:
-            template = self._read_prompt(prompts["reference_extraction"])
-            prompt = template.replace("__{dataset_name}__", dataset["title"])
-            messages.append({"role": "user", "content": prompt})
-            response_ref = self.client.chat(messages)
-            assistant_msg_ref = response_ref.choices[0].message
-            messages.append(
-                {
-                    "role": assistant_msg_ref.role or "assistant",
-                    "content": assistant_msg_ref.content,
-                }
-            )
-            json_ref = self._extract_json_from_response(assistant_msg_ref.content)
-            dataset["reference"] = json_ref.get("reference")
+        # for dataset in result["datasets"]:
+        #     template = self._read_prompt(prompts["reference_extraction"])
+        #     prompt = template.replace("__{dataset_name}__", dataset["title"])
+        #     messages.append({"role": "user", "content": prompt})
+        #     response_ref = self.client.chat(messages)
+        #     assistant_msg_ref = response_ref.choices[0].message
+        #     messages.append(
+        #         {
+        #             "role": assistant_msg_ref.role or "assistant",
+        #             "content": assistant_msg_ref.content,
+        #         }
+        #     )
+        #     json_ref = self._extract_json_from_response(assistant_msg_ref.content)
+        #     dataset["reference"] = json_ref.get("reference")
 
         for dataset in result["datasets"]:
             template = self._read_prompt(prompts["keywords_extraction"])

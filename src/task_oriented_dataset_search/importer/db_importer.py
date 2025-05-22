@@ -43,7 +43,7 @@ class TinyDBImporter(BaseImporter):
             title = ds.get("title", "")
             description = ds.get("description", "")
             link = ds.get("link", "")
-            reference = ds.get("reference", "")
+            # reference = ds.get("reference", "")
             dataset_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{fingerprint}:{title}").hex
             if not self.datasets_tbl.contains(self.DatasetQ.id == dataset_id):
                 self.datasets_tbl.insert(
@@ -53,7 +53,7 @@ class TinyDBImporter(BaseImporter):
                         "title": title,
                         "description": description,
                         "link": link,
-                        "reference": reference,
+                        # "reference": reference,
                     }
                 )
 

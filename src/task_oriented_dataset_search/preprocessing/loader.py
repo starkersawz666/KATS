@@ -29,7 +29,7 @@ class TextLoader(BaseLoader):
         return Document(text=text, metadata={"path": path})
 
 
-class PdfLoader(BaseLoader):
+class Pdf2MdLoader(BaseLoader):
     def load(self, path: str) -> Document:
         doc = fitz.open(path)
         md_pages = []
@@ -43,6 +43,17 @@ class PdfLoader(BaseLoader):
             md_pages.append(md_page)
         full_md = "\n\n".join(md_pages)
         return Document(text=full_md, metadata={"path": path})
+
+
+class PdfLoader(BaseLoader):
+    def load(self, path: str) -> Document:
+        texts = []
+        with fitz.open(path) as doc:
+            for page in doc:
+                page_text = page.get_text("text")
+                texts.append(page_text)
+        full_text = "\n".join(texts)
+        return Document(text=full_text, metadata={"path": path})
 
 
 def get_loader(path: str) -> BaseLoader:

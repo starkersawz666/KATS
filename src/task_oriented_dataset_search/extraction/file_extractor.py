@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 from typing import Dict
 from task_oriented_dataset_search.extraction.interface import BaseExtractor
 from task_oriented_dataset_search.utils.cache import CacheManager
+
+logger = logging.getLogger(__name__)
 
 
 def extract_file(
