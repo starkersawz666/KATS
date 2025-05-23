@@ -65,9 +65,10 @@ class GraphBuilder:
                 if not self.graph.has_edge(ds_id, task_id):
                     self.graph.add_edge(ds_id, task_id, type="used_for_task")
 
-    def save_graph(self):
+    def save_graph(self, save_path: str = None):
+        graph_save_path = save_path or self.graph_path
         try:
-            os.makedirs(os.path.dirname(self.graph_path) or ".", exist_ok=True)
-            nx.write_graphml(self.graph, self.graph_path)
+            os.makedirs(os.path.dirname(graph_save_path) or ".", exist_ok=True)
+            nx.write_graphml(self.graph, graph_save_path)
         except Exception as e:
-            logger.error(f"Failed to save graph to {self.graph_path}: {e}")
+            logger.error(f"Failed to save graph to {graph_save_path}: {e}")

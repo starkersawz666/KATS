@@ -37,6 +37,7 @@ class PipelineConfig:
     task_parquet_path: str | None = None
     dataset_parquet_path: str | None = None
     graph_path: str | None = None
+    graph_processed_path: str | None = None
     retry_initial_delay: float = 1.0
     retry_max_delay: float = 30.0
     temperature: float = 0.1
@@ -63,7 +64,11 @@ class PipelineConfig:
                 self.cache_root, "datasets.parquet"
             )
         if self.graph_path is None:
-            self.graph_path = os.path.join(self.cache_root, "knowledge_graph.graphml")
+            self.graph_path = os.path.join(self.cache_root, "original_kg.graphml")
+        if self.graph_processed_path is None:
+            self.graph_processed_path = os.path.join(
+                self.cache_root, "processed_kg.graphml"
+            )
 
 
 class TodsBuilder:
@@ -154,6 +159,7 @@ class TodsBuilder:
         task_merger = TaskMerger(
             db_path=cfg.db_path,
             graph_path=cfg.graph_path,
+            graph_processed_path=cfg.graph_processed_path,
             task_faiss_path=cfg.faiss_tasks_index_path,
             task_parquet_path=cfg.task_parquet_path,
             strong_similarity_threshold=cfg.strong_similarity_threshold,

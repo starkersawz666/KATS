@@ -18,6 +18,7 @@ class TaskMerger:
         self,
         db_path: str,
         graph_path: str,
+        graph_processed_path: str,
         task_faiss_path: str,
         task_parquet_path: str,
         strong_similarity_threshold: float = 0.8,
@@ -27,6 +28,7 @@ class TaskMerger:
     ):
         self.db_path = db_path
         self.graph_path = graph_path
+        self.graph_processed_path = graph_processed_path
         self.task_faiss_path = task_faiss_path
         self.task_parquet_path = task_parquet_path
         self.strong_similarity_threshold = strong_similarity_threshold
@@ -72,7 +74,7 @@ class TaskMerger:
         return len(common_keywords) / min_len if min_len > 0 else 0.0
 
     def save_graph(self):
-        self.graph_builder.save_graph()
+        self.graph_builder.save_graph(self.graph_processed_path)
 
     def get_graph(self) -> nx.Graph:
         return self.graph_builder.get_graph()
@@ -92,7 +94,6 @@ class TaskMerger:
         D, I = self.faiss_index.search(all_vectors, k)
 
         merged_count = 0
-        weak_count = 0
         added_edges = set()
 
         for idx, int64_id_1 in enumerate(all_int64_ids):
@@ -135,7 +136,6 @@ class TaskMerger:
                     else:
                         add_edge = True
                         weight = similarity
-                        weak_count += 1
 
                 if add_edge:
                     self.graph.add_edge(
@@ -144,4 +144,4 @@ class TaskMerger:
                     added_edges.add(edge_tuple)
                     merged_count += 1
 
-        logger.info(f"Merged {merged_count} tasks based on similarity. {weak_count}")
+        logger.info(f"Merged {merged_count} tasks based on similarity.")
