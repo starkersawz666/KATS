@@ -1,6 +1,9 @@
+import logging
 import os
 import networkx as nx
 from tinydb import TinyDB
+
+logger = logging.getLogger(__name__)
 
 
 class GraphBuilder:
@@ -11,7 +14,7 @@ class GraphBuilder:
         self.db = TinyDB(self.db_path)
         self.graph = self._load_or_create_graph()
 
-    def _load_or_create_graph(self) -> nx.DiGraph:
+    def _load_or_create_graph(self) -> nx.Graph:
         if os.path.exists(self.graph_path):
             try:
                 return nx.read_graphml(self.graph_path)
@@ -23,6 +26,9 @@ class GraphBuilder:
     def _add_node_if_not_exists(self, node_id: str, **attrs):
         if node_id and not self.graph.has_node(node_id):
             self.graph.add_node(node_id, **attrs)
+
+    def get_graph(self) -> nx.Graph:
+        return self.graph
 
     def build_graph(self):
         documents = self.db.table("documents").all()
@@ -64,4 +70,4 @@ class GraphBuilder:
             os.makedirs(os.path.dirname(self.graph_path) or ".", exist_ok=True)
             nx.write_graphml(self.graph, self.graph_path)
         except Exception as e:
-            pass
+            logger.error(f"Failed to save graph to {self.graph_path}: {e}")

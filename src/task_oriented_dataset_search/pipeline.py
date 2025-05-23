@@ -11,6 +11,7 @@ from task_oriented_dataset_search.extraction.client import OpenAIClient
 from task_oriented_dataset_search.extraction.extractor import StandardExtractor
 from task_oriented_dataset_search.extraction.file_extractor import extract_file
 from task_oriented_dataset_search.graph.builder import GraphBuilder
+from task_oriented_dataset_search.graph.merger import TaskMerger
 from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
 from task_oriented_dataset_search.preprocessing.processor import preprocess
 from task_oriented_dataset_search.utils.cache import CacheManager
@@ -39,6 +40,10 @@ class PipelineConfig:
     retry_initial_delay: float = 1.0
     retry_max_delay: float = 30.0
     temperature: float = 0.1
+    strong_similarity_threshold: float = 0.8
+    keyword_overlap_threshold: float = 0.7
+    weak_similarity_threshold: float = 0.6
+    task_max_merge: int = 10
 
     def __post_init__(self):
         if self.db_path is None:
@@ -144,3 +149,17 @@ class TodsBuilder:
         graph_builder = GraphBuilder(db_path=cfg.db_path, graph_path=cfg.graph_path)
         graph_builder.build_graph()
         graph_builder.save_graph()
+
+        # STEP 6: Merge Tasks
+        task_merger = TaskMerger(
+            db_path=cfg.db_path,
+            graph_path=cfg.graph_path,
+            task_faiss_path=cfg.faiss_tasks_index_path,
+            task_parquet_path=cfg.task_parquet_path,
+            strong_similarity_threshold=cfg.strong_similarity_threshold,
+            keyword_overlap_threshold=cfg.keyword_overlap_threshold,
+            weak_similarity_threshold=cfg.weak_similarity_threshold,
+            max_merge=cfg.task_max_merge,
+        )
+        task_merger.merge_tasks()
+        task_merger.save_graph()
