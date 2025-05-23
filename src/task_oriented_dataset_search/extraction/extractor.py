@@ -47,31 +47,31 @@ class StandardExtractor(BaseExtractor):
             return json.loads(response, strict=False)
 
     @staticmethod
-    def _extract_json_from_response_brace(answer: str, del_comments=True):
+    def _extract_json_from_response_brace(response: str, del_comments=True):
         start_index = end_index = -1
-        if "{" in answer:
-            start_index = answer.find("{")
-        elif "[" in answer:
-            start_index = answer.find("[")
+        if "{" in response:
+            start_index = response.find("{")
+        elif "[" in response:
+            start_index = response.find("[")
         else:
-            start_index = answer.find("```json") + 8
-        if "}" in answer:
-            end_index = answer.rfind("}")
-        elif "]" in answer:
-            end_index = answer.rfind("]")
+            start_index = response.find("```json") + 8
+        if "}" in response:
+            end_index = response.rfind("}")
+        elif "]" in response:
+            end_index = response.rfind("]")
         else:
-            end_index = answer.rfind("```") - 1
+            end_index = response.rfind("```") - 1
         if start_index != -1 and end_index != -1:
-            answer = answer[start_index : end_index + 1].replace("\_", "_")
+            response = response[start_index : end_index + 1].replace("\_", "_")
         if del_comments:
             return json.loads(
-                re.sub(r"\/\/.*$", "", answer, flags=re.MULTILINE), strict=False
+                re.sub(r"\/\/.*$", "", response, flags=re.MULTILINE), strict=False
             )
         else:
-            return json.loads(answer, strict=False)
+            return json.loads(response, strict=False)
 
     @staticmethod
-    def _extract_json_from_response(answer: str):
+    def _extract_json_from_response(response: str):
         extract_funs = (
             (StandardExtractor._extract_json_from_response_bracket, False),
             (StandardExtractor._extract_json_from_response_brace, False),
@@ -80,7 +80,7 @@ class StandardExtractor(BaseExtractor):
         )
         for fun in extract_funs:
             try:
-                return fun[0](answer, fun[1])
+                return fun[0](response, fun[1])
             except Exception as e:
                 pass
 

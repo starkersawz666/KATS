@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import time
 
+from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
+from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
 from task_oriented_dataset_search.extraction.client import OpenAIClient
 from task_oriented_dataset_search.extraction.extractor import StandardExtractor
 from task_oriented_dataset_search.extraction.file_extractor import extract_file
@@ -28,6 +30,10 @@ class PipelineConfig:
     api_base: str | None = None
     model: str = "gpt-4o-mini"
     db_path: str | None = None
+    faiss_tasks_index_path: str | None = None
+    faiss_datasets_index_path: str | None = None
+    task_parquet_path: str | None = None
+    dataset_parquet_path: str | None = None
     retry_initial_delay: float = 1.0
     retry_max_delay: float = 30.0
     temperature: float = 0.1
@@ -35,6 +41,20 @@ class PipelineConfig:
     def __post_init__(self):
         if self.db_path is None:
             self.db_path = os.path.join(self.cache_root, "tiny_db.json")
+        if self.faiss_tasks_index_path is None:
+            self.faiss_tasks_index_path = os.path.join(
+                self.cache_root, "faiss_tasks.index"
+            )
+        if self.faiss_datasets_index_path is None:
+            self.faiss_datasets_index_path = os.path.join(
+                self.cache_root, "faiss_datasets.index"
+            )
+        if self.task_parquet_path is None:
+            self.task_parquet_path = os.path.join(self.cache_root, "tasks.parquet")
+        if self.dataset_parquet_path is None:
+            self.dataset_parquet_path = os.path.join(
+                self.cache_root, "datasets.parquet"
+            )
 
 
 class TodsBuilder:
@@ -104,3 +124,14 @@ class TodsBuilder:
         ext_dir = Path(cfg.cache_root) / "extraction"
         importer = TinyDBImporter(db_path=cfg.db_path)
         importer.import_all(ext_dir)
+
+        # STEP 4: Vector Embedding and Indexing
+        embedder = SentenceTransformerEmbedder()
+        embedding_pipeline = EmbeddingPipeline(
+            embedder,
+            task_index_path=cfg.faiss_tasks_index_path,
+            dataset_index_path=cfg.faiss_datasets_index_path,
+            task_parquet_path=cfg.task_parquet_path,
+            dataset_parquet_path=cfg.dataset_parquet_path,
+        )
+        embedding_pipeline.embed_all(db_path=cfg.db_path)

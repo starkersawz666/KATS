@@ -10,8 +10,11 @@ class FaissIndexer:
         if os.path.exists(self.index_path):
             self.index = faiss.read_index(self.index_path)
         else:
-            flat = faiss.IndexFlatIP(self.dimension)
-            self.index = faiss.IndexIDMap(flat)
+            self.index = faiss.IndexIDMap(faiss.IndexFlatIP(self.dimension))
+
+    @staticmethod
+    def hex_to_int64(hex_id: str) -> np.int64:
+        return np.int64(int(hex_id, 16) & ((1 << 63) - 1))
 
     def add(self, ids: np.ndarray, embeddings: np.ndarray) -> None:
         assert ids.dtype == np.int64
