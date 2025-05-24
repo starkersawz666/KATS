@@ -8,9 +8,10 @@ logger = logging.getLogger(__name__)
 
 class GraphBuilder:
 
-    def __init__(self, db_path: str, graph_path: str):
+    def __init__(self, db_path: str, graph_path: str, save_path: str | None = None):
         self.db_path = db_path
         self.graph_path = graph_path
+        self.save_path = save_path or graph_path
         self.db = TinyDB(self.db_path)
         self.graph = self._load_or_create_graph()
 
@@ -30,7 +31,7 @@ class GraphBuilder:
     def get_graph(self) -> nx.Graph:
         return self.graph
 
-    def build_graph(self):
+    def build_basic_graph(self):
         documents = self.db.table("documents").all()
         datasets = self.db.table("datasets").all()
         tasks = self.db.table("tasks").all()
@@ -66,9 +67,30 @@ class GraphBuilder:
                     self.graph.add_edge(ds_id, task_id, type="used_for_task")
 
     def save_graph(self, save_path: str = None):
-        graph_save_path = save_path or self.graph_path
+        graph_save_path = save_path or self.save_path
         try:
             os.makedirs(os.path.dirname(graph_save_path) or ".", exist_ok=True)
             nx.write_graphml(self.graph, graph_save_path)
         except Exception as e:
             logger.error(f"Failed to save graph to {graph_save_path}: {e}")
+
+    def build_and_save_task_similarity_graph(self):
+        task_sim_graph = nx.Graph()
+        task_node_ids = []
+        for node_id, attrs in self.graph.nodes(data=True):
+            if attrs.get("type") == "task":
+                task_sim_graph.add_node(node_id, **attrs)
+                task_node_ids.append(node_id)
+
+        for u, v, attrs in self.graph.edges(data=True):
+            if (
+                u in task_node_ids
+                and v in task_node_ids
+                and attrs.get("type") == "similar_task"
+            ):
+                weight = attrs.get("weight", 0.0)
+                if weight > 0:
+                    task_sim_graph.add_edge(u, v, **attrs)
+
+        self.graph = task_sim_graph
+        self.save_graph()

@@ -14,6 +14,7 @@ from task_oriented_dataset_search.graph.builder import GraphBuilder
 from task_oriented_dataset_search.graph.merger import TaskMerger
 from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
 from task_oriented_dataset_search.preprocessing.processor import preprocess
+from task_oriented_dataset_search.search.searcher import Searcher
 from task_oriented_dataset_search.utils.cache import CacheManager
 
 
@@ -38,6 +39,7 @@ class PipelineConfig:
     dataset_parquet_path: str | None = None
     graph_path: str | None = None
     graph_processed_path: str | None = None
+    graph_tasks_path: str | None = None
     retry_initial_delay: float = 1.0
     retry_max_delay: float = 30.0
     temperature: float = 0.1
@@ -69,6 +71,8 @@ class PipelineConfig:
             self.graph_processed_path = os.path.join(
                 self.cache_root, "processed_kg.graphml"
             )
+        if self.graph_tasks_path is None:
+            self.graph_tasks_path = os.path.join(self.cache_root, "tasks_kg.graphml")
 
 
 class TodsBuilder:
@@ -152,7 +156,7 @@ class TodsBuilder:
 
         # STEP 5: Build Knowledge Graph
         graph_builder = GraphBuilder(db_path=cfg.db_path, graph_path=cfg.graph_path)
-        graph_builder.build_graph()
+        graph_builder.build_basic_graph()
         graph_builder.save_graph()
 
         # STEP 6: Merge Tasks
@@ -169,3 +173,25 @@ class TodsBuilder:
         )
         task_merger.merge_tasks()
         task_merger.save_graph()
+        merged_graph_builder = GraphBuilder(
+            db_path=cfg.db_path,
+            graph_path=cfg.graph_processed_path,
+            save_path=cfg.graph_tasks_path,
+        )
+        merged_graph_builder.build_and_save_task_similarity_graph()
+
+    def search(self, task: str):
+        embedder = SentenceTransformerEmbedder()
+        searcher = Searcher(
+            embedder=embedder,
+            db_path=self.cfg.db_path,
+            faiss_tasks_index_path=self.cfg.faiss_tasks_index_path,
+            task_parquet_path=self.cfg.task_parquet_path,
+            graph_processed_path=self.cfg.graph_processed_path,
+            graph_tasks_path=self.cfg.graph_tasks_path,
+        )
+        results = searcher.search(task)
+        return results
+
+    def qa(self):
+        pass

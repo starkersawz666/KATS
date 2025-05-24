@@ -36,7 +36,7 @@ class TaskMerger:
         self.weak_similarity_threshold = weak_similarity_threshold
         self.max_merge = max_merge
 
-        self.graph_builder = GraphBuilder(db_path, graph_path)
+        self.graph_builder = GraphBuilder(db_path, graph_path, graph_processed_path)
         self.graph = self.graph_builder.get_graph()
         self.faiss_index = self._load_faiss_index()
         self.task_df, self.int64_to_hex_map, self.hex_to_keywords_map = (
@@ -74,7 +74,7 @@ class TaskMerger:
         return len(common_keywords) / min_len if min_len > 0 else 0.0
 
     def save_graph(self):
-        self.graph_builder.save_graph(self.graph_processed_path)
+        self.graph_builder.save_graph()
 
     def get_graph(self) -> nx.Graph:
         return self.graph_builder.get_graph()
