@@ -595,6 +595,18 @@ files = [
 ]
 
 [[package]]
+name = "disjoint-set"
+version = "0.8.0"
+description = "Disjoint set data structure implementation for Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "disjoint_set-0.8.0-py3-none-any.whl", hash = "sha256:2f802cd3cd03c651921bde18fa73d316c22104b09e5eab157e30ba322a7aeeae"},
+    {file = "disjoint_set-0.8.0.tar.gz", hash = "sha256:ce37119ca6be07671c4e51410a28511193ec168580ff373b0819d31b34b47728"},
+]
+
+[[package]]
 name = "distro"
 version = "1.9.0"
 description = "Distro - an OS platform information API"
@@ -4045,4 +4057,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "cf87a2a93649070ffb0ab135b0eeb30e8df70102c3ccaf9632a3f50fa3769f8f"
+content-hash = "52545acb91a51ed01c9d70f652e06c5e81a9f06ea839b19d7138f19b524a4ba2"

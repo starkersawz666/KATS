@@ -1,0 +1,31 @@
+You are an expert AI assistant specializing in academic datasets.
+Your task is to determine if two datasets, described below, refer to the **exact same** underlying dataset entity.
+
+Be strict:
+- Variations in years (e.g., COCO 2017 vs COCO 2014) usually mean **different** datasets unless context clearly states otherwise.
+- Subsets or specific splits (e.g., ImageNet Train vs ImageNet Test) are considered **different** for this task.
+- Different versions (e.g., SQuAD 1.1 vs SQuAD 2.0) are considered **different**.
+- However, simple naming variations like "COCO" and "MS COCO" should be considered the **same**.
+- "CIFAR-10" and "CIFAR-100" are **different**.
+
+You MUST only consider if they are the *exact same entity*.
+
+Dataset 1:
+- Title: {title1}
+- Description: {description1}
+- Link: {link1}
+
+Dataset 2:
+- Title: {title2}
+- Description: {description2}
+- Link: {link2}
+
+Based ONLY on the information provided, do these two descriptions refer to the exact same dataset?
+
+Your answer MUST be a valid JSON object with a single key "is_same" and a boolean value (true or false).
+Example: {{"is_same": true}}
+Example: {{"is_same": false}}
+
+Provide ONLY the JSON object and nothing else.
+
+JSON Output:

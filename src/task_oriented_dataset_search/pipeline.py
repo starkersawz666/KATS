@@ -13,7 +13,8 @@ from task_oriented_dataset_search.extraction.client import OpenAIClient
 from task_oriented_dataset_search.extraction.extractor import StandardExtractor
 from task_oriented_dataset_search.extraction.file_extractor import extract_file
 from task_oriented_dataset_search.graph.builder import GraphBuilder
-from task_oriented_dataset_search.graph.merger import TaskMerger
+from task_oriented_dataset_search.graph.dataset_merger import DatasetMerger
+from task_oriented_dataset_search.graph.task_merger import TaskMerger
 from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
 from task_oriented_dataset_search.preprocessing.processor import preprocess
 from task_oriented_dataset_search.search.qa import QAEngine
@@ -56,6 +57,11 @@ class PipelineConfig:
     keyword_overlap_threshold: float = 0.7
     weak_similarity_threshold: float = 0.6
     task_max_merge: int = 10
+
+    dataset_merge_k_neighbors: int = 10
+    dataset_merge_similarity_threshold: float = 0.7
+    llm_retries: int = 3
+    llm_retry_delay: float = 10.0
 
     def __post_init__(self):
         if self.db_path is None:
@@ -216,6 +222,25 @@ class TodsEngine:
         )
         task_merger.merge_tasks()
         task_merger.save_graph()
+
+        # STEP 7: Merge Datasets
+        dataset_merger = DatasetMerger(
+            db_path=cfg.db_path,
+            graph_path=cfg.graph_processed_path,  # Input is TaskMerger's output
+            graph_processed_path=cfg.graph_processed_path,  # Output overwrites
+            dataset_faiss_path=cfg.faiss_datasets_index_path,
+            dataset_parquet_path=cfg.dataset_parquet_path,
+            llm_client=self.llm_client,
+            cache_manager=cache,
+            similarity_threshold=cfg.dataset_merge_similarity_threshold,
+            k_neighbors=cfg.dataset_merge_k_neighbors,
+            llm_retries=cfg.llm_retries,
+            llm_retry_delay=cfg.llm_retry_delay,
+        )
+        dataset_merger.merge_datasets()
+        dataset_merger.save_graph()  # Save the graph with merged datasets
+
+        # STEP 8: Separate Task Graph
         merged_graph_builder = GraphBuilder(
             db_path=cfg.db_path,
             graph_path=cfg.graph_processed_path,
