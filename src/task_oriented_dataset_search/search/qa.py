@@ -25,8 +25,23 @@ class QAEngine:
             logger.error(f"Prompt file not found at {path}")
             raise
 
-    def answer(self, task_description: str) -> str:
-        search_results = self.searcher.search(task_description)
+    def answer(
+        self,
+        task_description: str,
+        top_k_datasets: int = 5,
+        initial_faiss_k: int = 2,
+        similarity_threshold: float = 0.85,
+        min_seed_similarity: float = 0.6,
+        pagerank_alpha: float = 0.85,
+    ) -> str:
+        search_results = self.searcher.search(
+            task_description,
+            top_k_datasets=top_k_datasets,
+            initial_faiss_k=initial_faiss_k,
+            similarity_threshold=similarity_threshold,
+            min_seed_similarity=min_seed_similarity,
+            pagerank_alpha=pagerank_alpha,
+        )
 
         if not search_results:
             return "Sorry, I cannot find any related dataset for your question."

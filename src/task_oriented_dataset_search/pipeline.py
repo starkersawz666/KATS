@@ -223,11 +223,41 @@ class TodsEngine:
         )
         merged_graph_builder.build_and_save_task_similarity_graph()
 
-    def search(self, task: str):
+    def search(
+        self,
+        task: str,
+        top_k_datasets: int = 5,
+        initial_faiss_k: int = 2,
+        similarity_threshold: float = 0.85,
+        min_seed_similarity: float = 0.6,
+        pagerank_alpha: float = 0.85,
+    ):
         searcher = self._get_searcher()
-        results = searcher.search(task)
+        results = searcher.search(
+            task,
+            top_k_datasets=top_k_datasets,
+            initial_faiss_k=initial_faiss_k,
+            similarity_threshold=similarity_threshold,
+            min_seed_similarity=min_seed_similarity,
+            pagerank_alpha=pagerank_alpha,
+        )
         return results
 
-    def qa(self, task_description: str) -> str:
+    def qa(
+        self,
+        task_description: str,
+        top_k_datasets: int = 5,
+        initial_faiss_k: int = 2,
+        similarity_threshold: float = 0.85,
+        min_seed_similarity: float = 0.6,
+        pagerank_alpha: float = 0.85,
+    ) -> str:
         qa_engine = self._get_qa_engine()
-        return qa_engine.answer(task_description)
+        return qa_engine.answer(
+            task_description,
+            top_k_datasets=top_k_datasets,
+            initial_faiss_k=initial_faiss_k,
+            similarity_threshold=similarity_threshold,
+            min_seed_similarity=min_seed_similarity,
+            pagerank_alpha=pagerank_alpha,
+        )
