@@ -16,6 +16,7 @@ from task_oriented_dataset_search.graph.builder import GraphBuilder
 from task_oriented_dataset_search.graph.merger import TaskMerger
 from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
 from task_oriented_dataset_search.preprocessing.processor import preprocess
+from task_oriented_dataset_search.search.qa import QAEngine
 from task_oriented_dataset_search.search.searcher import Searcher
 from task_oriented_dataset_search.utils.cache import CacheManager
 
@@ -107,6 +108,7 @@ class TodsEngine:
             temperature=self.cfg.qa_temperature,
         )
         self.searcher_instance = None
+        self.qa_engine_instance = None
 
     def _get_searcher(self) -> Searcher:
         if self.searcher_instance is None:
@@ -120,6 +122,14 @@ class TodsEngine:
                 graph_tasks_path=self.cfg.graph_tasks_path,
             )
         return self.searcher_instance
+
+    def _get_qa_engine(self) -> QAEngine:
+        if self.qa_engine_instance is None:
+            searcher = self._get_searcher()
+            self.qa_engine_instance = QAEngine(
+                qa_client=self.qa_client, searcher=searcher, db_path=self.cfg.db_path
+            )
+        return self.qa_engine_instance
 
     def build(self):
         cfg = self.cfg
@@ -219,66 +229,5 @@ class TodsEngine:
         return results
 
     def qa(self, task_description: str) -> str:
-        searcher = self._get_searcher()
-        search_results = searcher.search(task_description)
-
-        if not search_results:
-            return "Sorry, I cannot find any related dataset for your question."
-
-        db = TinyDB(self.cfg.db_path)
-        tasks_tbl = db.table("tasks")
-        TaskQ = Query()
-
-        context_list = []
-        for i, ds in enumerate(search_results):
-            ds_id = ds.get("id")
-            title = ds.get("title", "N/A")
-            description = ds.get("description", "N/A")
-            link = ds.get("link", "N/A")
-
-            associated_tasks = tasks_tbl.search(TaskQ.dataset_id == ds_id)
-            tasks_info = (
-                "; ".join([t.get("task_description", "N/A") for t in associated_tasks])
-                if associated_tasks
-                else "N/A"
-            )
-
-            context_list.append(
-                f"{i+1}. **Dataset**: {title}\n"
-                f"   **Description**: {description}\n"
-                f"   **Related Tasks**: {tasks_info}\n"
-                f"   **Link**: {link}"
-            )
-
-        context_str = "\n\n".join(context_list)
-
-        prompt = f"""
-You are an AI assistant specializing in dataset discovery. Several relevant datasets are found based on their described task. Your goal is to formulate a concise and helpful response Based *only* on the context provided below.
-
-Follow these instructions:
-- Your answer must be *strictly* based on the provided context information.
-- *All the datasets* provided in the context information &must be included in your answer&.
-- If there are significantly duplicate datasets in the context, you can select one of them to include in your answer.
-- Do *not* invent or include any information beyond the provided context.
-- Present the information clearly, highlighting the dataset titles and briefly explaining why they might be relevant to the user's task.
-
----
-Context Information (Datasets found):
-{context_str}
----
-
-User Task: {task_description}
-
-Answer:
-"""
-
-        # Call LLM
-        messages = [{"role": "user", "content": prompt}]
-
-        try:
-            response = self.qa_client.chat(messages)
-            answer = response.choices[0].message.content
-            return answer
-        except Exception as e:
-            logger.error(f"QA LLM call failed: {e}")
-            return "Sorry, an error occurred while generating the answer."
+        qa_engine = self._get_qa_engine()
+        return qa_engine.answer(task_description)
