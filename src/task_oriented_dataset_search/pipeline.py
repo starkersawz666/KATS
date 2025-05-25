@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import time
 
+from tinydb import Query, TinyDB
+
 from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
 from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
 from task_oriented_dataset_search.extraction.client import OpenAIClient
@@ -32,6 +34,13 @@ class PipelineConfig:
     retry_limit: int = 1
     api_base: str | None = None
     model: str = "gpt-4o-mini"
+    temperature: float = 0.1
+
+    qa_api_key: str | None = None
+    qa_api_base: str | None = None
+    qa_model: str = "gpt-4o"
+    qa_temperature: float = 1
+
     db_path: str | None = None
     faiss_tasks_index_path: str | None = None
     faiss_datasets_index_path: str | None = None
@@ -42,7 +51,6 @@ class PipelineConfig:
     graph_tasks_path: str | None = None
     retry_initial_delay: float = 1.0
     retry_max_delay: float = 30.0
-    temperature: float = 0.1
     strong_similarity_threshold: float = 0.8
     keyword_overlap_threshold: float = 0.7
     weak_similarity_threshold: float = 0.6
@@ -73,14 +81,45 @@ class PipelineConfig:
             )
         if self.graph_tasks_path is None:
             self.graph_tasks_path = os.path.join(self.cache_root, "tasks_kg.graphml")
+        if self.qa_api_key is None:
+            self.qa_api_key = self.api_key
+        if self.qa_api_base is None:
+            self.qa_api_base = self.api_base
 
 
-class TodsBuilder:
+class TodsEngine:
     def __init__(self, config: PipelineConfig = None, **kwargs):
         if config is not None:
             self.cfg = config
         else:
             self.cfg = PipelineConfig(**kwargs)
+
+        self.llm_client = OpenAIClient(
+            api_key=self.cfg.api_key,
+            model=self.cfg.model,
+            base_url=self.cfg.api_base,
+            temperature=self.cfg.temperature,
+        )
+        self.qa_client = OpenAIClient(
+            api_key=self.cfg.qa_api_key,
+            model=self.cfg.qa_model,
+            base_url=self.cfg.qa_api_base,
+            temperature=self.cfg.qa_temperature,
+        )
+        self.searcher_instance = None
+
+    def _get_searcher(self) -> Searcher:
+        if self.searcher_instance is None:
+            embedder = SentenceTransformerEmbedder()
+            self.searcher_instance = Searcher(
+                embedder=embedder,
+                db_path=self.cfg.db_path,
+                faiss_tasks_index_path=self.cfg.faiss_tasks_index_path,
+                task_parquet_path=self.cfg.task_parquet_path,
+                graph_processed_path=self.cfg.graph_processed_path,
+                graph_tasks_path=self.cfg.graph_tasks_path,
+            )
+        return self.searcher_instance
 
     def build(self):
         cfg = self.cfg
@@ -101,13 +140,7 @@ class TodsBuilder:
                     pass
 
         # STEP 2: Extraction
-        client = OpenAIClient(
-            api_key=cfg.api_key,
-            model=cfg.model,
-            base_url=cfg.api_base,
-            temperature=cfg.temperature,
-        )
-        extractor = StandardExtractor(client)
+        extractor = StandardExtractor(self.llm_client)
         pre_dir = Path(cfg.cache_root) / "preprocessing"
         txts = list(pre_dir.glob("*.txt"))
 
@@ -181,17 +214,71 @@ class TodsBuilder:
         merged_graph_builder.build_and_save_task_similarity_graph()
 
     def search(self, task: str):
-        embedder = SentenceTransformerEmbedder()
-        searcher = Searcher(
-            embedder=embedder,
-            db_path=self.cfg.db_path,
-            faiss_tasks_index_path=self.cfg.faiss_tasks_index_path,
-            task_parquet_path=self.cfg.task_parquet_path,
-            graph_processed_path=self.cfg.graph_processed_path,
-            graph_tasks_path=self.cfg.graph_tasks_path,
-        )
+        searcher = self._get_searcher()
         results = searcher.search(task)
         return results
 
-    def qa(self):
-        pass
+    def qa(self, task_description: str) -> str:
+        searcher = self._get_searcher()
+        search_results = searcher.search(task_description)
+
+        if not search_results:
+            return "Sorry, I cannot find any related dataset for your question."
+
+        db = TinyDB(self.cfg.db_path)
+        tasks_tbl = db.table("tasks")
+        TaskQ = Query()
+
+        context_list = []
+        for i, ds in enumerate(search_results):
+            ds_id = ds.get("id")
+            title = ds.get("title", "N/A")
+            description = ds.get("description", "N/A")
+            link = ds.get("link", "N/A")
+
+            associated_tasks = tasks_tbl.search(TaskQ.dataset_id == ds_id)
+            tasks_info = (
+                "; ".join([t.get("task_description", "N/A") for t in associated_tasks])
+                if associated_tasks
+                else "N/A"
+            )
+
+            context_list.append(
+                f"{i+1}. **Dataset**: {title}\n"
+                f"   **Description**: {description}\n"
+                f"   **Related Tasks**: {tasks_info}\n"
+                f"   **Link**: {link}"
+            )
+
+        context_str = "\n\n".join(context_list)
+
+        prompt = f"""
+You are an AI assistant specializing in dataset discovery. Several relevant datasets are found based on their described task. Your goal is to formulate a concise and helpful response Based *only* on the context provided below.
+
+Follow these instructions:
+- Your answer must be *strictly* based on the provided context information.
+- *All the datasets* provided in the context information &must be included in your answer&.
+- If there are significantly duplicate datasets in the context, you can select one of them to include in your answer.
+- Do *not* invent or include any information beyond the provided context.
+- Present the information clearly, highlighting the dataset titles and briefly explaining why they might be relevant to the user's task.
+
+---
+Context Information (Datasets found):
+{context_str}
+---
+
+User Task: {task_description}
+
+Answer:
+"""
+
+        # Call LLM
+        messages = [{"role": "user", "content": prompt}]
+
+        try:
+            response = self.qa_client.chat(messages)
+            answer = response.choices[0].message.content
+            return answer
+        except Exception as e:
+            logger.error(f"QA LLM call failed: {e}")
+            return "Sorry, an error occurred while generating the answer."
