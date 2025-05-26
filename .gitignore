@@ -23,4 +23,6 @@ dist/
 *.tmp
 samples/
 .cache/
-demo.ipynb
+/demo.ipynb
+examples/.cache/
+examples/sample_docs
