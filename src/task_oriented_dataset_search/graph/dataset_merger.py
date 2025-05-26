@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 from disjoint_set import DisjointSet
 import faiss
@@ -34,6 +34,7 @@ class DatasetMerger:
         llm_retries: int = 3,
         llm_retry_delay: float = 10.0,
         alias_dict_name: str = "dataset_alias.json",
+        different_pairs_name: str = "dataset_different_pairs.json",
     ):
         self.db_path = db_path
         self.graph_path = graph_path
@@ -47,6 +48,7 @@ class DatasetMerger:
         self.llm_retries = llm_retries
         self.llm_retry_delay = llm_retry_delay
         self.alias_dict_name = alias_dict_name
+        self.different_pairs_name = different_pairs_name
 
         logger.info("Initializing DatasetMerger...")
         logger.debug(
@@ -61,6 +63,7 @@ class DatasetMerger:
         self.faiss_index = self._load_faiss_index()
         self.dataset_df, self.int64_to_hex_map, self.dataset_details = self._load_data()
         self.alias_dict = self._load_alias_dict()
+        self.different_pairs_set = self._load_different_pairs_set()
         self._prompts_dir = os.path.join(os.path.dirname(__file__), "prompts")
         self.dataset_ids = list(self.dataset_details.keys())
         self.dsu = DisjointSet()
@@ -121,6 +124,40 @@ class DatasetMerger:
 
         self.cache.save(
             "aliases", "dataset_alias_fingerprint", self.alias_dict, saver, ".json"
+        )
+
+    def _load_different_pairs_set(self) -> Set[Tuple[str, str]]:
+        logger.debug(f"Loading different pairs set ({self.different_pairs_name})...")
+
+        def loader(path: str) -> Set[Tuple[str, str]]:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    list_of_lists = json.load(f)
+                    return {tuple(pair) for pair in list_of_lists}
+            except (FileNotFoundError, json.JSONDecodeError):
+                logger.warning(
+                    f"Failed to load different pairs from {path}. Returning empty set."
+                )
+                return set()
+
+        fingerprint = "dataset_different_pairs_fingerprint"
+        data = self.cache.load_if_exists("aliases", fingerprint, loader, ".json")
+
+        return data if data is not None else set()
+
+    def _save_different_pairs_set(self) -> None:
+        logger.debug(
+            f"Saving different pairs set with {len(self.different_pairs_set)} entries..."
+        )
+
+        def saver(path: str, data: Set[Tuple[str, str]]):
+            list_of_lists = [list(pair) for pair in data]
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(list_of_lists, f, indent=2, ensure_ascii=False)
+
+        fingerprint = "dataset_different_pairs_fingerprint"
+        self.cache.save(
+            "aliases", fingerprint, self.different_pairs_set, saver, ".json"
         )
 
     def _read_prompt(self, relpath: str) -> str:
@@ -224,6 +261,13 @@ class DatasetMerger:
             if self.dsu.connected(ds1_id, ds2_id):
                 continue
 
+            current_pair = tuple(sorted((ds1_id, ds2_id)))
+            if current_pair in self.different_pairs_set:
+                logger.debug(
+                    f"Skipping LLM: Pair {current_pair} known to be different."
+                )
+                continue
+
             norm_title1 = self._normalize_title(self.dataset_details[ds1_id]["title"])
             norm_title2 = self._normalize_title(self.dataset_details[ds2_id]["title"])
 
@@ -231,14 +275,19 @@ class DatasetMerger:
                 self.dsu.union(ds1_id, ds2_id)
                 continue
 
-            if self._call_llm_judge(ds1_id, ds2_id):
+            llm_is_same = self._call_llm_judge(ds1_id, ds2_id)
+            if llm_is_same:
                 self.dsu.union(ds1_id, ds2_id)
                 root = self.dsu.find(ds1_id)
                 self.alias_dict[norm_title1] = root
                 self.alias_dict[norm_title2] = root
+            else:
+                self.different_pairs_set.add(current_pair)
+                logger.debug(f"Added pair {current_pair} to different_pairs_set.")
 
         logger.info(f"Dataset merging check finished.")
         self._save_alias_dict()
+        self._save_different_pairs_set()
         self._merge_graph_nodes()
 
     def _merge_graph_nodes(self):

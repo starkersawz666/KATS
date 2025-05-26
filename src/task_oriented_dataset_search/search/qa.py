@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class QAEngine:
     def __init__(self, qa_client: OpenAIClient, searcher: Searcher, db_path: str):
+        logger.debug("Initializing QAEngine")
         self.qa_client = qa_client
         self.searcher = searcher
         self.db_path = db_path
