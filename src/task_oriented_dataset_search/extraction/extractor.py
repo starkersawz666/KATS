@@ -16,11 +16,17 @@ class StandardExtractor(BaseExtractor):
     def __init__(self, client: BaseLLMClient):
         self.client = client
         self._prompts_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        logger.info("StandardExtractor initialized.")
 
     def _read_prompt(self, relpath: str) -> str:
         path = os.path.join(self._prompts_dir, os.path.basename(relpath))
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        logger.debug(f"Reading prompt file: {path}")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            logger.error(f"Prompt file not found at {path}")
+            raise
 
     @staticmethod
     def _extract_json_from_response_bracket(response: str, del_comments=True):
@@ -72,6 +78,7 @@ class StandardExtractor(BaseExtractor):
 
     @staticmethod
     def _extract_json_from_response(response: str):
+        logger.debug(f"Attempting to extract JSON from response: {response[:100]}...")
         extract_funs = (
             (StandardExtractor._extract_json_from_response_bracket, False),
             (StandardExtractor._extract_json_from_response_brace, False),
@@ -95,6 +102,7 @@ class StandardExtractor(BaseExtractor):
         },
         **tpl_kwargs,
     ) -> ExtractionResult:
+        logger.debug("Starting standard extraction process.")
         messages = [
             {
                 "role": "system",
@@ -116,6 +124,7 @@ class StandardExtractor(BaseExtractor):
         if not flag_dataset_used:
             return {"datasets_used": False, "datasets": []}
 
+        logger.debug("Extracting dataset details...")
         messages.append(
             {
                 "role": "user",
@@ -143,6 +152,7 @@ class StandardExtractor(BaseExtractor):
                 }
             )
 
+        # logger.debug("Extracting references for datasets...")
         # for dataset in result["datasets"]:
         #     template = self._read_prompt(prompts["reference_extraction"])
         #     prompt = template.replace("__{dataset_name}__", dataset["title"])
@@ -158,6 +168,7 @@ class StandardExtractor(BaseExtractor):
         #     json_ref = self._extract_json_from_response(assistant_msg_ref.content)
         #     dataset["reference"] = json_ref.get("reference")
 
+        logger.debug("Extracting keywords for each task...")
         for dataset in result["datasets"]:
             template = self._read_prompt(prompts["keywords_extraction"])
             keywords_messages = [

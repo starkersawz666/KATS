@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 import time
 
-from tinydb import Query, TinyDB
-
 from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
 from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
 from task_oriented_dataset_search.extraction.client import OpenAIClient
@@ -101,23 +99,31 @@ class TodsEngine:
         else:
             self.cfg = PipelineConfig(**kwargs)
 
+        logger.info("Initializing TodsEngine...")
+        logger.debug(f"Configuration: {self.cfg}")
+
         self.llm_client = OpenAIClient(
             api_key=self.cfg.api_key,
             model=self.cfg.model,
             base_url=self.cfg.api_base,
             temperature=self.cfg.temperature,
         )
+        logger.info(f"Initialized extraction LLM client with model: {self.cfg.model}")
         self.qa_client = OpenAIClient(
             api_key=self.cfg.qa_api_key,
             model=self.cfg.qa_model,
             base_url=self.cfg.qa_api_base,
             temperature=self.cfg.qa_temperature,
         )
+        logger.info(f"Initialized QA LLM client with model: {self.cfg.qa_model}")
+
         self.searcher_instance = None
         self.qa_engine_instance = None
+        logger.info("TodsEngine initialized.")
 
     def _get_searcher(self) -> Searcher:
         if self.searcher_instance is None:
+            logger.info("Initializing Searcher...")
             embedder = SentenceTransformerEmbedder()
             self.searcher_instance = Searcher(
                 embedder=embedder,
@@ -127,38 +133,62 @@ class TodsEngine:
                 graph_processed_path=self.cfg.graph_processed_path,
                 graph_tasks_path=self.cfg.graph_tasks_path,
             )
+            logger.info("Searcher initialized.")
         return self.searcher_instance
 
     def _get_qa_engine(self) -> QAEngine:
         if self.qa_engine_instance is None:
+            logger.info("Initializing QAEngine...")
             searcher = self._get_searcher()
             self.qa_engine_instance = QAEngine(
                 qa_client=self.qa_client, searcher=searcher, db_path=self.cfg.db_path
             )
+            logger.info("QAEngine initialized.")
         return self.qa_engine_instance
 
     def build(self):
         cfg = self.cfg
+        logger.info("Starting build process...")
         if not cfg.input_folder or not cfg.api_key:
+            logger.error("Missing arguments: input_folder or api_key")
             raise ValueError("Missing arguments: input_folder or api_key")
 
         cache = CacheManager(cfg.cache_root)
+        logger.info(f"Using cache root: {cfg.cache_root}")
 
         # STEP 1: Preprocessing
+        logger.info("--- STEP 1: Starting Preprocessing ---")
         files = list(Path(cfg.input_folder).rglob("*"))
+        logger.info(f"Found {len(files)} potential files in {cfg.input_folder}.")
+        processed_count = 0
+        failed_count = 0
         with ThreadPoolExecutor(cfg.preprocess_workers) as exe:
             futures = {exe.submit(preprocess, str(f)): f for f in files if f.is_file()}
+            logger.info(
+                f"Submitting {len(futures)} files for preprocessing with {cfg.preprocess_workers} workers."
+            )
             for fut in as_completed(futures):
+                file_path = futures[fut]
                 try:
                     doc = fut.result()
-                    print(doc)
+                    logger.debug(f"Successfully preprocessed: {file_path}")
+                    processed_count += 1
                 except Exception as e:
-                    pass
+                    logger.error(f"Failed to preprocess {file_path}: {e}")
+                    failed_count += 1
+        logger.info(
+            f"--- STEP 1: Preprocessing Finished. Processed: {processed_count}, Failed: {failed_count} ---"
+        )
 
         # STEP 2: Extraction
+        logger.info("--- STEP 2: Starting Extraction ---")
         extractor = StandardExtractor(self.llm_client)
         pre_dir = Path(cfg.cache_root) / "preprocessing"
         txts = list(pre_dir.glob("*.txt"))
+        logger.info(f"Found {len(txts)} preprocessed text files for extraction.")
+
+        extracted_count = 0
+        failed_count = 0
 
         def worker(txt_path: Path):
             fp = txt_path.stem
@@ -166,6 +196,7 @@ class TodsEngine:
             delay = cfg.retry_initial_delay
             for attempt in range(1, cfg.retry_limit + 1):
                 try:
+                    logger.debug(f"Attempt {attempt}/{cfg.retry_limit} to extract {fp}")
                     res = extract_file(str(txt_path), extractor, cache)
                     return fp, res
                 except Exception as e:
@@ -177,22 +208,42 @@ class TodsEngine:
                     )
                     time.sleep(delay)
                     delay = min(delay * 2, cfg.retry_max_delay)
+            logger.error(
+                f"Extraction failed for {fp} after {cfg.retry_limit} attempts: {last_exc}"
+            )
             raise last_exc
 
         with ThreadPoolExecutor(cfg.extract_workers) as exe:
             futures = {exe.submit(worker, txt): txt for txt in txts}
+            logger.info(
+                f"Submitting {len(futures)} files for extraction with {cfg.extract_workers} workers."
+            )
             for fut in as_completed(futures):
+                txt_file = futures[fut]
                 try:
                     fp, res = fut.result()
+                    logger.debug(
+                        f"Successfully extracted: {txt_file.name} -> {fp}.json"
+                    )
+                    extracted_count += 1
                 except Exception as e:
-                    pass
+                    logger.error(
+                        f"Extraction ultimately failed for {txt_file.name}: {e}"
+                    )
+                    failed_count += 1
+        logger.info(
+            f"--- STEP 2: Extraction Finished. Extracted: {extracted_count}, Failed: {failed_count} ---"
+        )
 
         # STEP 3: Import into TinyDB
+        logger.info("--- STEP 3: Starting TinyDB Import ---")
         ext_dir = Path(cfg.cache_root) / "extraction"
         importer = TinyDBImporter(db_path=cfg.db_path)
         importer.import_all(ext_dir)
+        logger.info(f"--- STEP 3: TinyDB Import Finished. DB at: {cfg.db_path} ---")
 
         # STEP 4: Vector Embedding and Indexing
+        logger.info("--- STEP 4: Starting Vector Embedding and Indexing ---")
         embedder = SentenceTransformerEmbedder()
         embedding_pipeline = EmbeddingPipeline(
             embedder,
@@ -202,13 +253,19 @@ class TodsEngine:
             dataset_parquet_path=cfg.dataset_parquet_path,
         )
         embedding_pipeline.embed_all(db_path=cfg.db_path)
+        logger.info("--- STEP 4: Vector Embedding and Indexing Finished ---")
 
         # STEP 5: Build Knowledge Graph
+        logger.info("--- STEP 5: Building Basic Knowledge Graph ---")
         graph_builder = GraphBuilder(db_path=cfg.db_path, graph_path=cfg.graph_path)
         graph_builder.build_basic_graph()
         graph_builder.save_graph()
+        logger.info(
+            f"--- STEP 5: Basic Knowledge Graph Finished. Saved to: {cfg.graph_path} ---"
+        )
 
         # STEP 6: Merge Tasks
+        logger.info("--- STEP 6: Starting Task Merging ---")
         task_merger = TaskMerger(
             db_path=cfg.db_path,
             graph_path=cfg.graph_path,
@@ -222,8 +279,12 @@ class TodsEngine:
         )
         task_merger.merge_tasks()
         task_merger.save_graph()
+        logger.info(
+            f"--- STEP 6: Task Merging Finished. Saved to: {cfg.graph_processed_path} ---"
+        )
 
         # STEP 7: Merge Datasets
+        logger.info("--- STEP 7: Starting Dataset Merging ---")
         dataset_merger = DatasetMerger(
             db_path=cfg.db_path,
             graph_path=cfg.graph_processed_path,  # Input is TaskMerger's output
@@ -239,14 +300,23 @@ class TodsEngine:
         )
         dataset_merger.merge_datasets()
         dataset_merger.save_graph()  # Save the graph with merged datasets
+        logger.info(
+            f"--- STEP 7: Dataset Merging Finished. Saved to: {cfg.graph_processed_path} ---"
+        )
 
         # STEP 8: Separate Task Graph
+        logger.info("--- STEP 8: Building Task Similarity Graph ---")
         merged_graph_builder = GraphBuilder(
             db_path=cfg.db_path,
             graph_path=cfg.graph_processed_path,
             save_path=cfg.graph_tasks_path,
         )
         merged_graph_builder.build_and_save_task_similarity_graph()
+        logger.info(
+            f"--- STEP 8: Task Similarity Graph Finished. Saved to: {cfg.graph_tasks_path} ---"
+        )
+
+        logger.info("Build process completed successfully.")
 
     def search(
         self,
@@ -257,6 +327,7 @@ class TodsEngine:
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
     ):
+        logger.info(f"Starting search for task: '{task}' with top_k={top_k_datasets}")
         searcher = self._get_searcher()
         results = searcher.search(
             task,
@@ -266,6 +337,7 @@ class TodsEngine:
             min_seed_similarity=min_seed_similarity,
             pagerank_alpha=pagerank_alpha,
         )
+        logger.info(f"Search found {len(results)} results.")
         return results
 
     def qa(
@@ -277,8 +349,9 @@ class TodsEngine:
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
     ) -> str:
+        logger.info(f"Starting QA for task: '{task_description}'")
         qa_engine = self._get_qa_engine()
-        return qa_engine.answer(
+        answer = qa_engine.answer(
             task_description,
             top_k_datasets=top_k_datasets,
             initial_faiss_k=initial_faiss_k,
@@ -286,3 +359,5 @@ class TodsEngine:
             min_seed_similarity=min_seed_similarity,
             pagerank_alpha=pagerank_alpha,
         )
+        logger.info("QA process finished.")
+        return answer

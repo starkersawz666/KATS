@@ -36,20 +36,29 @@ class TaskMerger:
         self.weak_similarity_threshold = weak_similarity_threshold
         self.max_merge = max_merge
 
+        logger.info("Initializing TaskMerger...")
+        logger.debug(
+            f"Params: StrongSim={strong_similarity_threshold}, KeywordOverlap={keyword_overlap_threshold}, WeakSim={weak_similarity_threshold}, MaxMerge={max_merge}"
+        )
+
         self.graph_builder = GraphBuilder(db_path, graph_path, graph_processed_path)
         self.graph = self.graph_builder.get_graph()
         self.faiss_index = self._load_faiss_index()
         self.task_df, self.int64_to_hex_map, self.hex_to_keywords_map = (
             self._load_data()
         )
+        logger.info("TaskMerger initialized.")
 
     def _load_faiss_index(self) -> faiss.Index:
         if not os.path.exists(self.task_faiss_path):
+            logger.error(f"Faiss index not found: {self.task_faiss_path}")
             raise FileNotFoundError(f"Faiss index not found: {self.task_faiss_path}")
+        logger.info(f"Loading task Faiss index from {self.task_faiss_path}")
         return faiss.read_index(self.task_faiss_path)
 
     def _load_data(self):
         if not os.path.exists(self.task_parquet_path):
+            logger.error(f"Parquet file not found: {self.task_parquet_path}")
             raise FileNotFoundError(f"Parquet file not found: {self.task_parquet_path}")
         df = pd.read_parquet(self.task_parquet_path)
         df["embedding"] = df["embedding"].apply(lambda x: np.array(x, dtype="float32"))
@@ -61,7 +70,7 @@ class TaskMerger:
         }
 
         int64_to_hex = pd.Series(df.hex_id.values, index=df.int64_id).to_dict()
-
+        logger.info(f"Loaded {len(df)} tasks and {len(hex_to_keywords)} keyword sets.")
         return df, int64_to_hex, hex_to_keywords
 
     def _calculate_keyword_overlap(self, keywords1: set, keywords2: set) -> float:
@@ -80,6 +89,7 @@ class TaskMerger:
         return self.graph_builder.get_graph()
 
     def merge_tasks(self):
+        logger.info("Starting task merging process...")
         if self.task_df.empty:
             logger.warning("No tasks found to merge.")
             return

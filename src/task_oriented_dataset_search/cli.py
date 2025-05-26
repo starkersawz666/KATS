@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 from pathlib import Path
+import sys
 import click
 from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
 from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
@@ -14,6 +16,33 @@ from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
 from task_oriented_dataset_search.pipeline import PipelineConfig, TodsEngine
 from task_oriented_dataset_search.preprocessing.processor import preprocess
 from task_oriented_dataset_search.utils.cache import CacheManager
+
+
+def setup_logging(log_level_str: str = "INFO", log_file: str | None = None):
+    numeric_level = getattr(logging, log_level_str.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {log_level_str}")
+    root_logger = logging.getLogger()
+    root_logger.setLevel(numeric_level)
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(numeric_level)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    if log_file:
+        try:
+            file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+            file_handler.setLevel(numeric_level)
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+            root_logger.info(f"Logging to file: {log_file}")
+        except Exception as e:
+            root_logger.error(f"Failed to set up file logging at {log_file}: {e}")
 
 
 def _get_config_from_ctx(ctx) -> PipelineConfig:
@@ -136,11 +165,35 @@ def add_options(options):
 
 
 @click.group()
+@click.option(
+    "--log-level",
+    default="INFO",
+    type=click.Choice(
+        ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+    ),
+    help="Set the logging level.",
+    show_default=True,
+)
+@click.option(
+    "--log-file",
+    default=None,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Path to save log output to a file.",
+)
 @add_options(pipeline_options)
 @click.pass_context
-def cli(ctx, **kwargs):
+def cli(ctx, log_level, log_file, **kwargs):
+    setup_logging(log_level, log_file)
+    logger = logging.getLogger(__name__)
+
     ctx.ensure_object(dict)
     ctx.params = {k: v for k, v in kwargs.items() if v is not None}
+
+    ctx.params["log_level"] = log_level
+    ctx.params["log_file"] = log_file
+    logger.info(f"CLI started. Log level set to {log_level}.")
+    if log_file:
+        logger.info(f"Logging also to {log_file}.")
 
 
 @cli.command(name="preprocess")

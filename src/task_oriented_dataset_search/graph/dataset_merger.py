@@ -48,6 +48,11 @@ class DatasetMerger:
         self.llm_retry_delay = llm_retry_delay
         self.alias_dict_name = alias_dict_name
 
+        logger.info("Initializing DatasetMerger...")
+        logger.debug(
+            f"Params: SimThreshold={similarity_threshold}, K={k_neighbors}, LLMRetries={llm_retries}"
+        )
+
         self.db = TinyDB(self.db_path)
         self.datasets_tbl = self.db.table("datasets")
         self.DatasetQ = Query()
@@ -62,14 +67,16 @@ class DatasetMerger:
         for item in self.dataset_ids:
             self.dsu.find(item)
 
+        logger.info(
+            f"DatasetMerger initialized. Found {len(self.dataset_ids)} datasets."
+        )
+
     def _load_faiss_index(self) -> faiss.Index:
         return faiss.read_index(self.dataset_faiss_path)
 
     def _load_data(self) -> Tuple[pd.DataFrame, Dict[int, str], Dict[str, Dict]]:
         df = pd.read_parquet(self.dataset_parquet_path)
-        df["embedding"] = df["embedding"].apply(
-            lambda x: np.array(x, dtype="float32")
-        )  #
+        df["embedding"] = df["embedding"].apply(lambda x: np.array(x, dtype="float32"))
         int64_to_hex = pd.Series(df.hex_id.values, index=df.int64_id).to_dict()
         all_datasets = self.datasets_tbl.all()
         dataset_details = {
@@ -83,9 +90,12 @@ class DatasetMerger:
         return df, int64_to_hex, dataset_details
 
     def _load_graph(self) -> nx.Graph:
+        logger.info(f"Loading graph for dataset merging from: {self.graph_path}")
         return nx.read_graphml(self.graph_path)
 
     def _load_alias_dict(self) -> Dict[str, str]:
+        logger.debug(f"Loading alias dictionary ({self.alias_dict_name})...")
+
         def loader(path: str) -> Dict:
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -103,6 +113,8 @@ class DatasetMerger:
         return data if data is not None else {}
 
     def _save_alias_dict(self) -> None:
+        logger.debug(f"Saving alias dictionary with {len(self.alias_dict)} entries...")
+
         def saver(path: str, data: Dict):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -113,6 +125,7 @@ class DatasetMerger:
 
     def _read_prompt(self, relpath: str) -> str:
         path = os.path.join(self._prompts_dir, os.path.basename(relpath))
+        logger.debug(f"Reading prompt file: {path}")
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
@@ -127,6 +140,7 @@ class DatasetMerger:
         return current
 
     def _call_llm_judge(self, ds1_id: str, ds2_id: str) -> bool:
+        logger.debug(f"Calling LLM to judge if {ds1_id} and {ds2_id} are the same.")
         ds1 = self.dataset_details[ds1_id]
         ds2 = self.dataset_details[ds2_id]
         prompt_template = self._read_prompt("dataset_identity_prompt.txt")
@@ -165,6 +179,7 @@ class DatasetMerger:
         return False
 
     def _generate_candidates(self) -> List[Tuple[str, str, float]]:
+        logger.info("Generating dataset merge candidates using Faiss.")
         if (
             self.dataset_df.empty
             or not self.faiss_index
@@ -198,9 +213,11 @@ class DatasetMerger:
                 if pair not in seen_pairs:
                     candidates.append((hex_id_1, hex_id_2, similarity))
                     seen_pairs.add(pair)
+        logger.info(f"Generated {len(candidates)} dataset merge candidates.")
         return candidates
 
     def merge_datasets(self):
+        logger.info("Starting dataset merging process...")
         candidates = self._generate_candidates()
 
         for ds1_id, ds2_id, similarity in candidates:
@@ -220,10 +237,12 @@ class DatasetMerger:
                 self.alias_dict[norm_title1] = root
                 self.alias_dict[norm_title2] = root
 
+        logger.info(f"Dataset merging check finished.")
         self._save_alias_dict()
         self._merge_graph_nodes()
 
     def _merge_graph_nodes(self):
+        logger.info("Merging dataset nodes in the graph based on DSU sets.")
         groups = list(self.dsu.itersets())
         merged_count = 0
 
@@ -261,6 +280,7 @@ class DatasetMerger:
         logger.info(f"Merged {merged_count} dataset nodes in graph.")
 
     def save_graph(self):
+        logger.info(f"Saving merged dataset graph to {self.graph_processed_path}...")
         graph_to_save = self.graph.copy()
         for node_id, data in graph_to_save.nodes(data=True):
             for key, value in list(data.items()):
@@ -274,6 +294,7 @@ class DatasetMerger:
 
         os.makedirs(os.path.dirname(self.graph_processed_path) or ".", exist_ok=True)
         nx.write_graphml(graph_to_save, self.graph_processed_path)
+        logger.info("Merged dataset graph saved successfully.")
 
     def get_graph(self) -> nx.Graph:
         return self.graph

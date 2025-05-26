@@ -1,6 +1,8 @@
+import logging
 from typing import List, Dict, Any
-
 from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 
 class BaseLLMClient:
@@ -26,12 +28,22 @@ class OpenAIClient(BaseLLMClient):
         messages: List[Dict[str, str]],
         temperature: float | None = None,
         max_tokens: int | None = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
-        return self._client.chat.completions.create(
+        temp = self.temperature if temperature is None else temperature
+        logger.debug(
+            f"Calling OpenAI chat with model: {self._model}, temperature: {temp}"
+        )
+        response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
-            temperature=self.temperature if temperature is None else temperature,
+            temperature=temp,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
+        usage = response.usage
+        if usage:
+            logger.debug(f"OpenAI API call successful. Usage: {usage}")
+        else:
+            logger.debug("OpenAI API call successful.")
+        return response

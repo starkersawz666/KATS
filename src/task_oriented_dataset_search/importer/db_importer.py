@@ -1,10 +1,12 @@
 import json
+import logging
 import uuid
 from pathlib import Path
-
 from tinydb import TinyDB, Query
 
 from .interface import BaseImporter
+
+logger = logging.getLogger(__name__)
 
 
 class TinyDBImporter(BaseImporter):
@@ -13,6 +15,7 @@ class TinyDBImporter(BaseImporter):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(exist_ok=True, parents=True)
         self.db = TinyDB(self.db_path)
+        logger.info(f"TinyDBImporter initialized. Using database at: {self.db_path}")
 
         self.docs_tbl = self.db.table("documents")
         self.datasets_tbl = self.db.table("datasets")
@@ -24,6 +27,7 @@ class TinyDBImporter(BaseImporter):
 
     def import_file(self, json_path: Path) -> None:
         json_path = Path(json_path)
+        logger.debug(f"Attempting to import file: {json_path.name}")
         data = json.loads(json_path.read_text(encoding="utf-8"))
         if not data:
             return
@@ -37,6 +41,9 @@ class TinyDBImporter(BaseImporter):
 
         datasets = data.get("datasets")
         if not isinstance(datasets, list):
+            logger.warning(
+                f"'datasets' key not found or not a list in {json_path.name}. Skipping dataset import."
+            )
             return
 
         for ds in datasets:
@@ -74,8 +81,24 @@ class TinyDBImporter(BaseImporter):
 
     def import_all(self, cache_dir: Path | str) -> None:
         cache_dir = Path(cache_dir)
-        for json_file in cache_dir.glob("*.json"):
+        logger.info(f"Starting import_all from directory: {cache_dir}")
+        json_files = list(cache_dir.glob("*.json"))
+        logger.info(f"Found {len(json_files)} JSON files to import.")
+
+        imported_count = 0
+        failed_count = 0
+
+        for json_file in json_files:
             try:
                 self.import_file(json_file)
-            except Exception:
-                pass
+                imported_count += 1
+            except Exception as e:
+                logger.error(
+                    f"An unexpected error occurred while importing {json_file.name}: {e}",
+                    exc_info=True,
+                )
+                failed_count += 1
+
+        logger.info(
+            f"Finished import_all. Processed: {imported_count + failed_count}, Succeeded: {imported_count}, Failed: {failed_count}."
+        )

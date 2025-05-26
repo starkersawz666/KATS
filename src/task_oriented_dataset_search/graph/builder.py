@@ -12,26 +12,42 @@ class GraphBuilder:
         self.db_path = db_path
         self.graph_path = graph_path
         self.save_path = save_path or graph_path
+        logger.info(
+            f"Initializing GraphBuilder. DB: {db_path}, Graph Path: {graph_path}, Save Path: {self.save_path}"
+        )
         self.db = TinyDB(self.db_path)
         self.graph = self._load_or_create_graph()
 
     def _load_or_create_graph(self) -> nx.Graph:
         if os.path.exists(self.graph_path):
             try:
-                return nx.read_graphml(self.graph_path)
+                graph = nx.read_graphml(self.graph_path)
+                logger.info(
+                    f"Successfully loaded graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges."
+                )
+                return graph
             except Exception as e:
+                logger.error(
+                    f"Failed to load graph from {self.graph_path}: {e}. Creating a new graph.",
+                    exc_info=True,
+                )
                 return nx.Graph()
         else:
+            logger.info(
+                f"Graph file not found at {self.graph_path}. Creating a new graph."
+            )
             return nx.Graph()
 
     def _add_node_if_not_exists(self, node_id: str, **attrs):
         if node_id and not self.graph.has_node(node_id):
+            logger.debug(f"Adding node: {node_id} with attrs: {attrs}")
             self.graph.add_node(node_id, **attrs)
 
     def get_graph(self) -> nx.Graph:
         return self.graph
 
     def build_basic_graph(self):
+        logger.info("Starting to build the basic graph...")
         documents = self.db.table("documents").all()
         datasets = self.db.table("datasets").all()
         tasks = self.db.table("tasks").all()
@@ -65,22 +81,28 @@ class GraphBuilder:
             ):
                 if not self.graph.has_edge(ds_id, task_id):
                     self.graph.add_edge(ds_id, task_id, type="used_for_task")
+        logger.info(f"Finished building basic graph.")
 
     def save_graph(self, save_path: str = None):
         graph_save_path = save_path or self.save_path
+        logger.info(f"Saving graph to: {graph_save_path}...")
         try:
             os.makedirs(os.path.dirname(graph_save_path) or ".", exist_ok=True)
             nx.write_graphml(self.graph, graph_save_path)
+            logger.info(f"Graph saved successfully.")
         except Exception as e:
             logger.error(f"Failed to save graph to {graph_save_path}: {e}")
+            raise
 
     def build_and_save_task_similarity_graph(self):
+        logger.info("Starting to build task similarity graph...")
         task_sim_graph = nx.Graph()
         task_node_ids = []
         for node_id, attrs in self.graph.nodes(data=True):
             if attrs.get("type") == "task":
                 task_sim_graph.add_node(node_id, **attrs)
                 task_node_ids.append(node_id)
+        logger.info(f"Found {len(task_node_ids)} task nodes.")
 
         for u, v, attrs in self.graph.edges(data=True):
             if (
@@ -94,3 +116,4 @@ class GraphBuilder:
 
         self.graph = task_sim_graph
         self.save_graph()
+        logger.info("Finished building and saving task similarity graph.")
