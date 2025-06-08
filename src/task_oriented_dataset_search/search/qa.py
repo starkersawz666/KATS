@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 
 from tinydb import Query, TinyDB
@@ -30,14 +31,21 @@ class QAEngine:
         self,
         task_description: str,
         top_k_datasets: int = 5,
+        search_rate: float = 2.0,
         initial_faiss_k: int = 2,
         similarity_threshold: float = 0.85,
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
     ) -> str:
+        if search_rate < 1.0:
+            logger.warning(
+                f"Search rate is set to 1.0 since it is {search_rate}, which is less than 1.0."
+            )
+            search_rate = 1.0
+
         search_results = self.searcher.search(
             task_description,
-            top_k_datasets=top_k_datasets,
+            top_k_datasets=math.ceil(top_k_datasets * search_rate),
             initial_faiss_k=initial_faiss_k,
             similarity_threshold=similarity_threshold,
             min_seed_similarity=min_seed_similarity,
@@ -82,7 +90,9 @@ class QAEngine:
             )
 
         prompt = prompt_template.format(
-            context_str=context_str, task_description=task_description
+            top_k=top_k_datasets,
+            context_str=context_str,
+            task_description=task_description,
         )
 
         messages = [{"role": "user", "content": prompt}]

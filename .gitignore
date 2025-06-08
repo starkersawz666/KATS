@@ -22,7 +22,12 @@ dist/
 *.log
 *.tmp
 samples/
+samples_small/
 .cache/
 /demo.ipynb
 examples/.cache/
 examples/sample_docs
+benchmark-small/
+baseline_small_test_paper/
+extraction result of test tasks of small benchmark/
+.cache*.zip

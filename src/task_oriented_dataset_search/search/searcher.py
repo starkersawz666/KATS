@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 
 import faiss
@@ -115,6 +116,8 @@ class Searcher:
                 if len(seed_task_hex_ids) >= max(1, initial_faiss_k // 3):
                     break
 
+        logger.info(f"Found {len(seed_task_hex_ids)} seed tasks based on FAISS search.")
+
         pagerank_scores = {}
         if (
             self.task_similarity_graph
@@ -148,7 +151,9 @@ class Searcher:
         else:
             logger.error("Pagerank skipped: No task similarity graph found.")
 
-        num_pagerank_candidates_to_consider = top_k_datasets * 3
+        num_pagerank_candidates_to_consider = (
+            top_k_datasets * 3 * math.ceil(math.log2(top_k_datasets) + 1)
+        )
         related_task_hex_ids = {
             node_id
             for node_id, score in sorted(
@@ -180,7 +185,16 @@ class Searcher:
                 task_score = pagerank_scores.get(task_hex_id, 0.0)
                 for neighbor_hex_id in self.main_graph.neighbors(task_hex_id):
                     if neighbor_hex_id in dataset_aggregated_scores:
-                        dataset_aggregated_scores[neighbor_hex_id] += 0.1 + task_score
+                        # dataset_aggregated_scores[neighbor_hex_id] += 0.1 + task_score
+                        # use maximum here
+                        dataset_aggregated_scores[neighbor_hex_id] = max(
+                            (
+                                dataset_aggregated_scores[neighbor_hex_id]
+                                if dataset_aggregated_scores[neighbor_hex_id]
+                                else 0
+                            ),
+                            0.1 + task_score,
+                        )
 
         sorted_dataset_ids_by_score = sorted(
             dataset_aggregated_scores.keys(),

@@ -1,11 +1,16 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import json
 import logging
+import math
 import os
 from pathlib import Path
 import time
 
-from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
+from task_oriented_dataset_search.embedding.embedder import (
+    OpenAIAPITextEmbedder,
+    SentenceTransformerEmbedder,
+)
 from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
 from task_oriented_dataset_search.extraction.client import OpenAIClient
 from task_oriented_dataset_search.extraction.extractor import StandardExtractor
@@ -60,6 +65,8 @@ class PipelineConfig:
     dataset_merge_similarity_threshold: float = 0.7
     llm_retries: int = 3
     llm_retry_delay: float = 10.0
+
+    qa_search_rate: float = 2.0
 
     def __post_init__(self):
         if self.db_path is None:
@@ -124,7 +131,10 @@ class TodsEngine:
     def _get_searcher(self) -> Searcher:
         if self.searcher_instance is None:
             logger.info("Initializing Searcher...")
-            embedder = SentenceTransformerEmbedder()
+            # embedder = SentenceTransformerEmbedder()
+            embedder = OpenAIAPITextEmbedder(
+                api_key=self.cfg.api_key, api_base=self.cfg.api_base
+            )
             self.searcher_instance = Searcher(
                 embedder=embedder,
                 db_path=self.cfg.db_path,
@@ -145,6 +155,86 @@ class TodsEngine:
             )
             logger.info("QAEngine initialized.")
         return self.qa_engine_instance
+
+    def preprocess_and_extract(self):
+        cfg = self.cfg
+        cache = CacheManager(cfg.cache_root)
+        files = list(Path(cfg.input_folder).rglob("*"))
+        mapping_file_path = os.path.join(
+            cfg.cache_root, "filename_fingerprint_mapping.json"
+        )
+        filename_mapping = {}
+
+        with ThreadPoolExecutor(cfg.preprocess_workers) as exe:
+            futures = {exe.submit(preprocess, str(f)): f for f in files if f.is_file()}
+            logger.info(
+                f"Submitting {len(futures)} files for preprocessing with {cfg.preprocess_workers} workers."
+            )
+            for fut in as_completed(futures):
+                file_path = futures[fut]
+                try:
+                    doc, fingerprint = fut.result()
+                    original_filename = str(file_path.resolve())
+                    filename_mapping[fingerprint] = original_filename
+                    logger.debug(f"Successfully preprocessed: {file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to preprocess {file_path}: {e}")
+
+        with open(mapping_file_path, "w", encoding="utf-8") as f:
+            json.dump(filename_mapping, f, indent=4, ensure_ascii=False)
+
+        extractor = StandardExtractor(self.llm_client)
+        pre_dir = Path(cfg.cache_root) / "preprocessing"
+        txts = list(pre_dir.glob("*.txt"))
+        logger.info(f"Found {len(txts)} preprocessed text files for extraction.")
+
+        extracted_count = 0
+        failed_count = 0
+
+        def worker(txt_path: Path):
+            fp = txt_path.stem
+            last_exc = None
+            delay = cfg.retry_initial_delay
+            for attempt in range(1, cfg.retry_limit + 1):
+                try:
+                    logger.debug(f"Attempt {attempt}/{cfg.retry_limit} to extract {fp}")
+                    res = extract_file(str(txt_path), extractor, cache)
+                    return fp, res
+                except Exception as e:
+                    last_exc = e
+                    if attempt == cfg.retry_limit:
+                        break
+                    logger.warning(
+                        f"Fail to extract {fp} with exception: {e}, retrying in {delay} seconds for the {attempt}/{cfg.retry_limit - 1} time"
+                    )
+                    time.sleep(delay)
+                    delay = min(delay * 2, cfg.retry_max_delay)
+            logger.error(
+                f"Extraction failed for {fp} after {cfg.retry_limit} attempts: {last_exc}"
+            )
+            raise last_exc
+
+        with ThreadPoolExecutor(cfg.extract_workers) as exe:
+            futures = {exe.submit(worker, txt): txt for txt in txts}
+            logger.info(
+                f"Submitting {len(futures)} files for extraction with {cfg.extract_workers} workers."
+            )
+            for fut in as_completed(futures):
+                txt_file = futures[fut]
+                try:
+                    fp, res = fut.result()
+                    logger.debug(
+                        f"Successfully extracted: {txt_file.name} -> {fp}.json"
+                    )
+                    extracted_count += 1
+                except Exception as e:
+                    logger.error(
+                        f"Extraction ultimately failed for {txt_file.name}: {e}"
+                    )
+                    failed_count += 1
+        logger.info(
+            f"Preprocess and extraction finished. Extracted: {extracted_count}, Failed: {failed_count}"
+        )
 
     def build(self):
         cfg = self.cfg
@@ -244,7 +334,9 @@ class TodsEngine:
 
         # STEP 4: Vector Embedding and Indexing
         logger.info("--- STEP 4: Starting Vector Embedding and Indexing ---")
-        embedder = SentenceTransformerEmbedder()
+        embedder = embedder = OpenAIAPITextEmbedder(
+            api_key=self.cfg.api_key, api_base=self.cfg.api_base
+        )
         embedding_pipeline = EmbeddingPipeline(
             embedder,
             task_index_path=cfg.faiss_tasks_index_path,
@@ -326,7 +418,7 @@ class TodsEngine:
         similarity_threshold: float = 0.85,
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
-    ):
+    ) -> list:
         logger.info(f"Starting search for task: '{task}' with top_k={top_k_datasets}")
         searcher = self._get_searcher()
         results = searcher.search(
@@ -354,6 +446,7 @@ class TodsEngine:
         answer = qa_engine.answer(
             task_description,
             top_k_datasets=top_k_datasets,
+            search_rate=self.cfg.qa_search_rate,
             initial_faiss_k=initial_faiss_k,
             similarity_threshold=similarity_threshold,
             min_seed_similarity=min_seed_similarity,

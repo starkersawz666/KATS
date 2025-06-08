@@ -1,0 +1,205 @@
+﻿task,ground_truth,link
+Provides training data for multimodal learning tasks involving image and text.,CC12M,https://github.com/google-research-datasets/conceptual-12m
+Language modeling and understanding tasks.,C4,https://c4.corp.google.com/
+Provides data for surface normal and depth estimation tasks.,DIODE,https://diode.csail.mit.edu/
+Training for semantic and instance segmentation tasks.,COCO,https://cocodataset.org/
+Providing labeled images across diverse categories for image classification tasks by .,ImageNet-1K,http://www.image-net.org/
+Supports semantic segmentation tasks by offering pixel-level annotations for diverse scenes.,ADE20K,http://groups.csail.mit.edu/vision/datasets/ADE20K/
+Training and testing of deepfake detection models.,FaceForensics++,https://github.com/ondyari/FaceForensics
+Evaluation of generalization ability in deepfake detection.,Celeb-DF,https://github.com/Yuezun Li/Celeb-DF
+Development and assessment of deepfake detection techniques.,DeepFake Detection Challenge Dataset,https://www.kaggle.com/c/deepfake-detection-challenge/data
+Image generation and restoration tasks such as super-resolution and inpainting.,FFHQ,https://github.com/NVlabs/ffhq-dataset
+"Image classification and restoration tasks, including super-resolution and deblurring.",ImageNet,http://www.image-net.org/
+Motion generation and tracking tasks for human motion analysis and synthesis.,AMASS,https://amass.is.tue.mpg.de/
+Providing labeled images for training and testing for image classification tasks.,Tiny ImageNet,https://tiny-imagenet.herokuapp.com/
+Supports image classification tasks by offering a diverse set of labeled images.,CIFAR-10,https://www.cs.toronto.edu/~kriz/cifar.html
+Training and evaluating image classification models.,ImageNet,http://www.image-net.org/
+Training of generative adversarial networks for face generation.,FFHQ (Flickr-Faces-HQ),https://github.com/NVlabs/ffhq-dataset
+Training of multi-view video diffusion models for 4D generation.,Objaverse,https://www.objaverse.org/
+Evaluating reinforcement learning algorithms in discrete action spaces.,Atari,https://github.com/mgbellemare/Arcade-Learning-Environment
+Training and evaluating reinforcement learning algorithms in continuous action spaces.,MuJoCo,https://www.roboti.us/index.html
+Binary classification tasks in machine learning experiments.,ijcnn1,http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html
+Image classification tasks across multiple categories.,CIFAR-10,https://www.cs.toronto.edu/~kriz/cifar.html
+Training and evaluation of image classification models.,MNIST,http://yann.lecun.com/exdb/mnist/
+Object detection and segmentation tasks.,MS COCO,https://cocodataset.org/
+Object detection and classification tasks.,PASCAL Visual Object Classes (VOC) 2012,http://host.robots.ox.ac.uk/pascal/VOC/voc2012/
+Object detection and image classification tasks.,Google Open Images V4,https://storage.googleapis.com/openimages/web/index.html
+Classifies scientific publications into predefined categories based on citation relationships.,Cora,https://graphsandnetworks.com/the-cora-dataset/
+Classifies scientific papers into specific categories based on citation links and textual content.,Citeseer,https://networkrepository.com/citeseer.php
+Classification of research papers based on citation patterns and publication metadata.,DBLP,https://dblp.uni-trier.de/xml/
+Classifies biomedical literature articles into categories based on citation relationships and textual features.,PubMed,https://pubmed.ncbi.nlm.nih.gov/download/
+Classification of arXiv papers into categories based on citation networks and textual content.,Ogbn_arxiv,https://github.com/snap-stanford/ogb/
+Evaluates question-answering capabilities using open-domain trivia questions.,TriviaQA,https://nlp.cs.washington.edu/triviaqa/
+Assesses truthfulness and informativeness of responses to common misconceptions.,TruthfulQA,https://huggingface.co/datasets/TruthfulQA
+Evaluates code generation capabilities through pass/fail assessments of generated solutions.,Mostly Basic Programming Problems (MBPP),https://github.com/google-research-datasets/mbpp
+Assesses code generation quality by measuring the success rate of generated solutions against predefined unit tests.,HumanEval,https://github.com/openai/human-eval
+Measures conversational quality and instruction-following capabilities through discrete quality scores assigned to generated responses.,MT-Bench,https://github.com/mt-bench/mt-bench
+Evaluates model robustness against adversarial prompts and harmful behaviors.,HarmBench,https://github.com/centerforaisafety/HarmBench
+Fine-tunes models on utility data to enhance conversational performance.,UltraChat200k,
+High-quality image generation and semantic segmentation.,FFHQ,https://github.com/NVlabs/ffhq-dataset
+Fine-grained image classification and unsupervised segmentation.,CUB,http://www.vision.caltech.edu/visipedia/CUB-200-2011.html
+Accurate face segmentation and parsing.,CelebAMask-HQ,https://github.com/switchablenorms/CelebAMask-HQ
+Training models for image classification and segmentation tasks.,ImageNet,http://www.image-net.org/
+Image classification and segmentation of floral species.,Flower,http://www.robots.ox.ac.uk/~vgg/data/flowers/102/
+Training of models for zero-shot image classification and multimodal understanding.,WIT (WebImageText),https://github.com/google-research-datasets/wit
+Scene classification tasks by providing a diverse set of scene images.,Places365,http://places2.csail.mit.edu/
+Training models for image-text retrieval and multimodal tasks.,LAION-400M,https://laion.ai/blog/laion-400m/
+Training of advanced multimodal models for various vision-language tasks.,LAION-5B,https://laion.ai/blog/laion-5b/
+"Predicts whether an individual earns more than $50,000 per year based on demographic attributes.",Adult,https://archive.ics.uci.edu/ml/datasets/adult
+Classifies credit applicants as either good or bad credit risks based on their attributes.,German Credit,https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)
+Predicts the level of violent crime in communities based on socio-economic factors.,Communities and Crime,https://archive.ics.uci.edu/ml/datasets/communities+and+crime
+Forecasting of electricity consumption patterns over time.,ETTm1,https://github.com/zhouhaoyi/ETDataset
+Prediction of electricity consumption trends and anomalies.,ETTm2,https://github.com/zhouhaoyi/ETDataset
+Modeling and forecasting of electricity consumption across multiple clients.,Electricity,https://archive.ics.uci.edu/ml/datasets/ElectricityLoadDiagrams20112014
+Forecasting weather conditions and understanding climate trends.,Weather,https://www.bgc-jena.mpg.de/wetter/
+Prediction of traffic flow and congestion patterns.,Traffic,https://github.com/laiguokun/multivariate-time-series-data
+Analysis and forecasting of currency exchange rate trends.,Exchange,https://github.com/laiguokun/multivariate-time-series-data
+Preference learning and alignment of language models with human feedback.,UltraFeedback Binarized,https://huggingface.co/datasets/HuggingFaceH4/ultrafeedback_binarized
+Evaluates dialogue generation models for helpfulness and harmlessness.,Anthropic-HH,https://huggingface.co/datasets/Anthropic/hh-rlhf
+Generates summaries that capture the main points of forum posts.,Reddit TL;DR,https://huggingface.co/datasets/openai/summarize_from_feedback
+Classifies movie reviews based on sentiment polarity.,IMDb Sentiment,https://huggingface.co/datasets/stanfordnlp/imdb
+Facilitates novel view synthesis through 3D scene representation.,Mip-NeRF360,https://github.com/google/mipnerf360
+Evaluates 3D reconstruction and view synthesis methods.,Tanks and Temples,https://github.com/fengzhang/3D-Scene-Reconstruction
+Supports research on blending techniques for image-based rendering.,Deep Blending,https://github.com/DeepBlending/DeepBlending
+Training and evaluation of auto-encoders for reconstruction tasks.,MNIST,http://yann.lecun.com/exdb/mnist/
+Latent-space PCA for dimensionality reduction and feature extraction.,Celeb-A-HQ,https://github.com/tkarras/progressive_growing_of_gans
+Semi-supervised classification tasks in graph convolutional networks.,Cora,https://relational.fit.cvut.cz/dataset/Cora
+Node classification tasks in graph neural networks.,Citeseer,https://relational.fit.cvut.cz/dataset/Citeseer
+Semi-supervised classification tasks in graph convolutional networks.,Pubmed,https://relational.fit.cvut.cz/dataset/Pubmed
+Training language models on diverse text data.,RedPajama,https://togethercomputer.com/redpajama
+Evaluation of language modeling performance.,PG-19,
+Facilitates image classification tasks by providing labeled images for supervised learning.,ImageNet,http://www.image-net.org/
+Supports scene classification tasks by offering diverse scene categories and images.,SUN397,http://groups.csail.mit.edu/vision/SUN/
+Fine-grained classification of aircraft types based on visual features.,Aircraft,https://www.robots.ox.ac.uk/~vgg/data/aircraft/
+Aids in land cover classification tasks by providing high-resolution satellite images.,EuroSAT,https://github.com/phelber/eurosat
+Fine-grained classification of car models based on visual features.,Stanford Cars,http://ai.stanford.edu/~jkrause/cars/car_dataset.html
+Providing labeled images of various food items for food classification tasks.,Food101,https://data.vision.ee.ethz.ch/cvl/food-101/
+Classification of pet breeds based on visual features.,Pets,http://www.robots.ox.ac.uk/~vgg/data/pets/
+Classification of flower species based on visual characteristics.,Flowers102,http://www.robots.ox.ac.uk/~vgg/data/flowers/102/
+Providing labeled images of various objects for object classification tasks.,Caltech101,http://www.vision.caltech.edu/visipedia/CALTECH101.html
+Providing diverse texture images for texture classification tasks.,DTD,http://www.robots.ox.ac.uk/~vgg/data/dtd/
+Providing labeled videos of various actions for action classification tasks.,UCF101,http://crcv.ucf.edu/data/UCF101.php
+Provides text data for training language models.,C4 Corpus,https://www.tensorflow.org/datasets/community_catalog/huggingface/c4
+Offers diverse text data for training and evaluating language models.,The Pile,https://arxiv.org/abs/2101.00027
+Analyzing the relationship between cognitive assessment scores and brain MRI data.,ADNI Dataset,https://adni.loni.usc.edu/
+Evaluating multi-task offline reinforcement learning algorithms in simulated environments.,MuJoCo,https://www.roboti.us/index.html
+Training and testing reinforcement learning agents on various robotic manipulation tasks.,MetaWorld,https://metaworld.stanford.edu/
+Evaluates multi-step reasoning capabilities in language models.,GSM8K,https://github.com/kingoflolz/mesh-transformer-jax/blob/main/gsm8k.py
+Assesses general knowledge and understanding across multiple subjects.,MMLU,https://github.com/hendrycks/test
+Evaluation of summarization capabilities in language models.,CNN Dailymail,https://cs.nyu.edu/~kcho/DMQA/
+Tests translation performance between English and German languages.,WMT EnDe,http://www.statmt.org/wmt20/translation-task.html
+Training of models for 3D Gaussian generation and reconstruction tasks.,Objaverse,https://linshan-bin.github.io/GeoLRM/
+Evaluates the performance of 3D reconstruction models on real-world scanned objects.,Google Scanned Objects,
+Tests the accuracy and quality of 3D reconstruction models across different object types.,OmniObject3D,
+Image classification and object recognition tasks.,ImageNet,http://www.image-net.org/
+Species classification and biodiversity research.,iNaturalist,https://www.inaturalist.org/
+Scene recognition and classification tasks.,SUN Database,http://groups.csail.mit.edu/vision/SUN/
+Scene classification and recognition tasks.,Places365,http://places2.csail.mit.edu/
+Texture classification and recognition tasks.,Textures,
+Multi-class image classification tasks.,CIFAR-10,https://www.cs.toronto.edu/~kriz/cifar.html
+Sentiment classification based on movie reviews.,IMDb,https://ai.stanford.edu/~amaas/data/sentiment/
+Evaluates reasoning abilities through solving math word problems.,GSM8K,https://github.com/georgia-tech-synergy/gsm8k
+Assesses reasoning capabilities through multiple-choice science questions.,ARC,https://github.com/stanfordnlp/ARC
+Tests advanced mathematical reasoning through competition-style problems.,MATH,https://github.com/hendrycks/math
+Evaluation and training of models to align with human values in dialogue systems.,Anthropic-RLHF-HH,
+Enhances model understanding and performance on a wide range of instruction-based tasks.,Flan,
+Depth estimation and 3D object detection tasks.,KITTI,http://www.cvlibs.net/datasets/kitti/
+Depth completion and scene understanding tasks.,NYU Depth V2,https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
+Research on patient treatment strategies and outcomes in critical care settings.,Medical Information Mart for Intensive Care III (MIMIC-III),https://mimic.physionet.org/
+Evaluates mathematical reasoning through word problems.,GSM8k,https://github.com/stanfordnlp/GSM8K
+Assesses scientific reasoning through multiple-choice questions.,ARC-Challenge,https://github.com/stanfordnlp/ARC
+Tests commonsense reasoning through sentence completion.,Hellaswag,https://rowanzellers.com/hellaswag/
+Evaluates general language understanding across multiple tasks.,MMLU,https://github.com/hendrycks/test
+Training of models for image-text retrieval and zero-shot classification.,Laion-400M,https://laion.ai/
+Unconditional generation of 3D Gaussian Splatting models.,ShapeNet,http://shapenet.cs.stanford.edu/
+Point-to-Gaussian generation from 3D point clouds.,DeepFashion3D,https://github.com/switchablenorms/DeepFashion3D
+Classifies chemical compounds into mutagenic and non-mutagenic categories.,MUTAG,
+Predicts the function of proteins based on their structural properties.,PROTEINS,
+Classifies collaboration networks based on the research areas of the authors.,COLLAB,
+Classification of clothing items into predefined categories.,Fashion-MNIST,https://github.com/zalandoresearch/fashion-mnist
+Training and evaluation of multi-agent motion prediction models.,Waymo Open Motion Dataset,https://waymo.com/open/
+Training language models for natural language processing tasks.,OpenWebText,https://skylion007.github.io/OpenWebTextCorpus/
+Facilitates image classification tasks by providing labeled images for training and testing.,ILSVRC2012,http://www.image-net.org/challenges/LSVRC/2012/
+Training and evaluation of large language models across multiple domains.,RedPajama,https://huggingface.co/datasets/togethercomputer/RedPajama-Data
+Evaluates multi-digit multiplication and boolean logic reasoning.,BIG-bench,https://github.com/google/BIG-bench
+Assesses grade school math problem-solving abilities.,GSM8K,https://github.com/geekyutao/GSM8K
+Evaluates rate-distortion performance of image compression algorithms.,Kodak Dataset,http://r0k.us/graphics/kodak/
+Trains models for image compression and related tasks.,OpenImages Dataset,https://github.com/openimages
+Assesses agents' reasoning capabilities and their ability to retrieve and synthesize information from multiple sources.,HotPotQA,
+Evaluates general language understanding capabilities across multiple tasks.,GLUE,https://gluebenchmark.com/
+Training of language models on diverse textual data.,C4,https://c4.corp.google.com/
+Classifies 3D shapes into predefined categories.,ModelNet40,http://modelnet.cs.stanford.edu/
+Predicts energy and forces from molecular configurations.,MD17,https://github.com/CompPhysics/MD17
+Supports few-shot novel view synthesis from sparse input images.,LLFF,https://github.com/FengZhang0606/LLFF
+Classify comments into toxicity categories.,Toxic Comment Classification Challenge,https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data
+Facilitates unconditional and conditional generation of molecular structures.,QM9,https://doi.org/10.1038/s41597-018-0078-0
+Generation of drug-like molecular structures under various constraints.,GEOM-DRUGS,https://doi.org/10.1038/s41597-022-01245-2
+Facilitates graph few-shot class-incremental learning tasks by providing labeled nodes for training and testing.,CoraFull,
+Providing a set of labeled products for model training and evaluation for graph few-shot class-incremental learning.,Computers,
+Audio-visual learning and sound classification.,VGGSound,https://www.robots.ox.ac.uk/~vgg/data/vggsound/
+Speech recognition and voice synthesis.,Common Voice,https://commonvoice.mozilla.org/en/datasets
+Audio event classification and sound recognition.,AudioSet,https://research.google.com/audioset/
+Evaluates extreme summarization of news articles.,XSUM,https://github.com/bbc/xsum
+Assesses mathematical reasoning through word problems.,GSM8k,https://github.com/kingoflolz/mesh-transformer-jax/blob/main/data/gsm8k.py
+Tests summarization of long articles into short summaries.,TLDR,https://github.com/abisee/tldr
+Facilitates 3D object detection and scene understanding.,ScanNet,http://www.scan-net.org/
+Facilitates 3D object detection and tracking in complex urban environments.,nuScenes,https://www.nuscenes.org/
+Evaluates attack success rates of language models against harmful prompts.,AdvBench,https://github.com/your-repo/advbench
+Measures the effectiveness of language models in refusing harmful requests.,HarmBench,https://github.com/your-repo/harmbench
+Facilitates restaurant recommendation based on user preferences and comparative feedback.,Yelp Dataset,https://www.yelp.com/dataset
+Image captioning and visual understanding.,CC3M,https://ai.google.com/research/ConceptualCaptions
+Facilitates data assimilation and weather forecasting tasks by providing comprehensive atmospheric state information.,ERA5,https://cds.climate.copernicus.eu/cdsapp#!/home
+Assesses physical commonsense reasoning through multiple-choice questions.,PiQA,https://github.com/Bisk et al./PiQA
+image classification across multiple categories.,CIFAR-10,https://www.cs.toronto.edu/~kriz/cifar.html
+Digit classification from handwritten samples.,MNIST,http://yann.lecun.com/exdb/mnist/
+Supports digit recognition in natural scene images.,SVHN,http://ufldl.stanford.edu/housenumbers/
+Predicts the age of abalone based on physical measurements.,Abalone,https://archive.ics.uci.edu/dataset/2/abalone
+Classifies individuals based on income exceeding $50K per year.,Census,https://archive.ics.uci.edu/dataset/2/adult
+Bird species identification through image classification.,Caltech-UCSD Birds-200-2011,http://www.vision.caltech.edu/visipedia/CUB-200-2011.html
+Car model identification through image classification.,Stanford Cars,http://ai.stanford.edu/~jkrause/cars/car_dataset.html
+Evaluates reasoning capabilities across multiple tasks.,BigBench-Hard (BBH),https://github.com/google/BIG-bench
+Tests knowledge across multiple academic subjects.,Massive Multitask Language Understanding (MMLU),https://github.com/hendrycks/test
+Assesses code generation capabilities for Python problems.,Mostly Basic Python Problems (MBPP),https://github.com/google-research/google-research/tree/master/mbpp
+Evaluates mathematical reasoning abilities.,Grade School Math 8K (GSM8K),https://github.com/GoogleCloudPlatform/grade-school-math
+Evaluation of recommendation algorithms and user-item interaction modeling.,MovieLens,https://grouplens.org/datasets/movielens/
+Community detection and social network analysis.,BlogCatalog,https://www.sociopatterns.org/datasets/blogcatalog/
+Analysis of user interactions and social dynamics.,Flickr,https://www.sociopatterns.org/datasets/flickr/
+Supports training of models for image-text alignment and retrieval tasks.,LAION-2B,https://laion.ai/
+Evaluates model robustness against spurious correlations.,Waterbirds Dataset,https://github.com/sagawa et al./waterbirds
+Evaluates geometry reconstruction and novel view synthesis.,DTU,https://www.compute.dtu.dk/services/3D-Data/DTU-3D-Scanning-Benchmark
+Facilitates novel view synthesis evaluation.,Mip-NeRF360,https://github.com/google/mipnerf360
+Classifying images into multiple scene categories.,SUN397,https://cs.stanford.edu/groups/vision/SUN/
+Identifying the make and model of cars from images.,Cars,https://ai.stanford.edu/~jkrause/cars/car_dataset.html
+Classifying satellite images into one of 10 land use classes.,EuroSAT,https://github.com/phelber/eurosat
+Recognizing digits from images of house numbers.,SVHN,http://ufldl.stanford.edu/housenumbers/
+Identifying traffic signs from images.,GTSRB,http://benchmark.ini.rub.de/?section=gtsrb&subsection=news
+Classifying images based on texture categories.,DTD,http://www.robots.ox.ac.uk/~vgg/data/dtd/
+Evaluating models on multiple natural language understanding tasks.,GLUE,https://gluebenchmark.com/
+Instruction tuning of large language models for diverse tasks.,Alpaca-GPT4,https://github.com/tatsu-lab/stanford_alpaca
+Predicting recidivism risk based on historical data and demographic features.,COMPAS,https://www.propublica.org/datastore/dataset/compas-recidivism-risk-score-data
+Predicting individual income based on demographic and socioeconomic features.,ACSIncome,https://www.kaggle.com/c/american-community-survey-income-prediction
+Node classification tasks based on citation relationships.,Cora,https://linqs.soe.ucsc.edu/publications/2000/cora.zip
+Enables node classification tasks using citation data.,Citeseer,https://linqs.soe.ucsc.edu/publications/2000/citeseer.zip
+Supports community detection and node classification tasks based on user interactions.,Reddit,https://www.reddit.com/r/datasets/comments/3bxlg7/reddit_data/
+Facilitates clinical prediction tasks and research in critical care medicine.,MIMIC-IV,https://physionet.org/static/published-projects/iv/
+Supports the development of algorithms for chest X-ray interpretation and clinical decision-making.,MIMIC-CXR,https://physionet.org/static/published-projects/mimiccxr/
+Evaluates code generation capabilities through programming problems.,HumanEval,https://github.com/openai/human-eval
+Assesses basic programming skills and standard library usage.,MBPP,https://github.com/google-research/google-research/tree/master/mbpp
+Evaluates mathematical reasoning and problem-solving capabilities.,MATH,https://github.com/hendrycks/math
+Face generation and face swapping.,CelebA-HQ,https://github.com/tkarras/progressive_growing_of_gans
+Evaluates the performance of face manipulation detection algorithms.,FaceForensics++,https://github.com/ondyari/FaceForensics
+Evaluates reconstruction quality and performance of surface reconstruction methods.,Waymo Open Dataset,https://waymo.com/open/
+Assesses the accuracy and efficiency of surface reconstruction techniques.,Tanks and Temples Dataset,https://tanksandtemples.org/
+Demonstrates efficacy in novel view synthesis tasks.,Mip-NeRF 360 Dataset,https://github.com/google/mipnerf360
+Evaluates language model performance on diverse tasks.,MMLU,https://github.com/hendrycks/test
+Assesses commonsense reasoning in language models.,HellaSwag,https://rowanzellers.com/hellaswag/
+Measures truthfulness of language model responses.,TruthfulQA,https://truthfulqa.com/
+Tests mathematical reasoning in language models.,GSM8k,https://github.com/kingoflolz/mesh-transformer-jax
+Evaluates coreference resolution and gender bias.,WinoGrande,https://winogrande.github.io/
+Evaluates generative models for molecular design.,Guacamol,https://github.com/BrownLab/guacamol
+Facial recognition and attribute prediction.,CelebA,https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html
+Training generative models for high-resolution face synthesis.,FFHQ,https://github.com/NVlabs/ffhq-dataset
+Scene understanding and image generation.,LSUN,http://lsun.cs.princeton.edu/
+Facilitates knowledge graph completion by predicting missing triplets.,WN18RR,https://github.com/DeepGraphLearning/KnowledgeGraphCompletion/tree/master/datasets/WN18RR
+Supports link prediction in knowledge graphs by inferring missing relationships.,FB15k-237,https://github.com/DeepGraphLearning/KnowledgeGraphCompletion/tree/master/datasets/FB15k-237
+Enables knowledge graph completion by predicting missing triplets based on existing relationships.,YAGO3-10,https://github.com/DeepGraphLearning/KnowledgeGraphCompletion/tree/master/datasets/YAGO3-10

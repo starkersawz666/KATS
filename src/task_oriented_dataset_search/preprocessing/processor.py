@@ -37,4 +37,4 @@ def preprocess(path: str) -> Document:
         ext=".txt",
     )
 
-    return Document(text=text, metadata={"path": path})
+    return Document(text=text, metadata={"path": path}), fingerprint

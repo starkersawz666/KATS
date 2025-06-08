@@ -20,5 +20,8 @@ Sample output format:
 ]
 
 **Additional requirement for `task`:**  
-- The value must be a **predicate–object phrase** (i.e. no explicit subject).  
-- Do **not** start with “This dataset …” or “It …”.
+- Clearly state the specific research activity or problem the dataset was applied to.
+- The description should be a brief, focused phrase or short sentence.
+- **The dataset's title or variations of its name MUST NOT appear in the task description.**
+- Do **not** begin the task description with phrases like "This dataset facilitates...", "It serves the purpose of...", "The task involves...".
+- The description should be suitable for semantic similarity searches. Therefore, prioritize descriptive verbs and objects that define the core challenge (e.g., "training a sentiment classifier for movie reviews", "evaluating a new algorithm for machine translation from English to German", "generating realistic human faces").
