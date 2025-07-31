@@ -5,7 +5,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 from tinydb import TinyDB
-from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
+
+# from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
 from task_oriented_dataset_search.embedding.indexer import FaissIndexer
 from task_oriented_dataset_search.embedding.interface import BaseEmbedder
 

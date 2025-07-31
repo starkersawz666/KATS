@@ -31,3 +31,6 @@ benchmark-small/
 baseline_small_test_paper/
 extraction result of test tasks of small benchmark/
 .cache*.zip
+draw.ipynb
+hit_rate_chart.png
+stat.ipynb

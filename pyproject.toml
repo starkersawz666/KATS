@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "task_oriented_dataset_search"
-version = "0.1.0"
+version = "0.1.1"
 description = "Task Oriented Dataset Search"
 authors = ["Zixin Wei <122090569@link.cuhk.edu.cn>"]
 license = "MIT"

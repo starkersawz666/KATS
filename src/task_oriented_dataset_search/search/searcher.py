@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+from typing import List
 
 import faiss
 import numpy as np
@@ -9,6 +10,7 @@ import pandas as pd
 from tinydb import Query, TinyDB
 from sklearn.metrics.pairwise import cosine_similarity
 from task_oriented_dataset_search.embedding.interface import BaseEmbedder
+from task_oriented_dataset_search.preprocessing.interface import Document
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +87,7 @@ class Searcher:
         similarity_threshold: float = 0.85,
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
-    ) -> list:
+    ) -> List[Document]:
         query_vector = self.embedder.embed([task_description])[0].reshape(1, -1)
         actual_k_for_faiss = min(initial_faiss_k, self.task_faiss_index.ntotal)
         faiss_scores, faiss_int64_ids_flat = self.task_faiss_index.search(

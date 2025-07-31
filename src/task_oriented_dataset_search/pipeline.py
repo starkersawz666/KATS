@@ -6,10 +6,11 @@ import math
 import os
 from pathlib import Path
 import time
+from typing import List
 
 from task_oriented_dataset_search.embedding.embedder import (
     OpenAIAPITextEmbedder,
-    SentenceTransformerEmbedder,
+    # SentenceTransformerEmbedder,
 )
 from task_oriented_dataset_search.embedding.pipeline import EmbeddingPipeline
 from task_oriented_dataset_search.extraction.client import OpenAIClient
@@ -19,6 +20,7 @@ from task_oriented_dataset_search.graph.builder import GraphBuilder
 from task_oriented_dataset_search.graph.dataset_merger import DatasetMerger
 from task_oriented_dataset_search.graph.task_merger import TaskMerger
 from task_oriented_dataset_search.importer.db_importer import TinyDBImporter
+from task_oriented_dataset_search.preprocessing.interface import Document
 from task_oriented_dataset_search.preprocessing.processor import preprocess
 from task_oriented_dataset_search.search.qa import QAEngine
 from task_oriented_dataset_search.search.searcher import Searcher
@@ -418,7 +420,7 @@ class TodsEngine:
         similarity_threshold: float = 0.85,
         min_seed_similarity: float = 0.6,
         pagerank_alpha: float = 0.85,
-    ) -> list:
+    ) -> List[Document]:
         logger.info(f"Starting search for task: '{task}' with top_k={top_k_datasets}")
         searcher = self._get_searcher()
         results = searcher.search(
