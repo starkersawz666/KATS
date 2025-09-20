@@ -404,6 +404,21 @@ def qa_cmd(ctx, task_description, top_k):
     click.echo(answer)
     click.echo("--------------")
 
+@cli.command(name="update")
+@click.option(
+    "--update-folder",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Input folder containing new documents to add to the knowledge base.",
+)
+@click.pass_context
+def update_cmd(ctx, update_folder):
+    """Incrementally update the knowledge base with new documents."""
+    engine = _get_engine_from_ctx(ctx)
+    click.echo(f"Starting INCREMENTAL update process from: {update_folder}")
+    engine.update(update_folder)
+    click.echo("Incremental update process complete.")
+
 
 if __name__ == "__main__":
     cli()

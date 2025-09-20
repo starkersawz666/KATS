@@ -79,8 +79,11 @@ class DatasetMerger:
 
     def _load_data(self) -> Tuple[pd.DataFrame, Dict[int, str], Dict[str, Dict]]:
         df = pd.read_parquet(self.dataset_parquet_path)
+        # df = pd.read_parquet(self.dataset_parquet_path).set_index("hex_id")
         df["embedding"] = df["embedding"].apply(lambda x: np.array(x, dtype="float32"))
         int64_to_hex = pd.Series(df.hex_id.values, index=df.int64_id).to_dict()
+        df.set_index("hex_id", inplace=True)
+
         all_datasets = self.datasets_tbl.all()
         dataset_details = {
             ds["id"]: {
@@ -347,3 +350,79 @@ class DatasetMerger:
 
     def get_graph(self) -> nx.Graph:
         return self.graph
+
+    def merge_new_datasets(self, new_dataset_hex_ids: List[str]):
+        logger.info(f"Starting incremental dataset merging for {len(new_dataset_hex_ids)} new datasets.")
+        if not new_dataset_hex_ids:
+            return
+
+        new_datasets_details = {
+            ds["id"]: {
+                "title": ds.get("title", ""),
+                "description": ds.get("description", ""),
+                "link": ds.get("link", "None"),
+            }
+            for ds in self.datasets_tbl.search(self.DatasetQ.id.one_of(new_dataset_hex_ids))
+        }
+        self.dataset_details.update(new_datasets_details)
+        for ds_id in new_dataset_hex_ids:
+            self.dsu.find(ds_id)
+
+        new_df = self.dataset_df[self.dataset_df.index.isin(new_dataset_hex_ids)]
+        if new_df.empty:
+            logger.warning("No data found for new dataset IDs in Parquet file. Skipping merge.")
+            return
+            
+        new_vectors = np.stack(new_df["embedding"].tolist())
+        k = min(self.k_neighbors, self.faiss_index.ntotal)
+        D, I = self.faiss_index.search(new_vectors, k)
+
+        candidates = []
+        seen_pairs = set()
+
+        for idx, hex_id_1 in enumerate(new_df.index):
+            for j, int64_id_2 in enumerate(I[idx]):
+                similarity = D[idx, j]
+                if int64_id_2 == -1 or similarity < self.similarity_threshold:
+                    continue
+                hex_id_2 = self.int64_to_hex_map.get(int64_id_2)
+                if not hex_id_2 or hex_id_1 == hex_id_2:
+                    continue
+                pair = tuple(sorted((hex_id_1, hex_id_2)))
+                if pair not in seen_pairs:
+                    candidates.append((hex_id_1, hex_id_2, similarity))
+                    seen_pairs.add(pair)
+        
+        logger.info(f"Generated {len(candidates)} incremental dataset merge candidates.")
+
+        for ds1_id, ds2_id, similarity in candidates:
+            if self.dsu.connected(ds1_id, ds2_id):
+                continue
+
+            current_pair = tuple(sorted((ds1_id, ds2_id)))
+            if current_pair in self.different_pairs_set:
+                continue
+
+            if ds1_id not in self.dataset_details or ds2_id not in self.dataset_details:
+                continue
+            
+            norm_title1 = self._normalize_title(self.dataset_details[ds1_id]["title"])
+            norm_title2 = self._normalize_title(self.dataset_details[ds2_id]["title"])
+
+            if norm_title1 == norm_title2 and norm_title1:
+                self.dsu.union(ds1_id, ds2_id)
+                continue
+
+            llm_is_same = self._call_llm_judge(ds1_id, ds2_id)
+            if llm_is_same:
+                self.dsu.union(ds1_id, ds2_id)
+                root = self.dsu.find(ds1_id)
+                self.alias_dict[norm_title1] = root
+                self.alias_dict[norm_title2] = root
+            else:
+                self.different_pairs_set.add(current_pair)
+
+        logger.info("Incremental dataset merging check finished.")
+        self._save_alias_dict()
+        self._save_different_pairs_set()
+        self._merge_graph_nodes()

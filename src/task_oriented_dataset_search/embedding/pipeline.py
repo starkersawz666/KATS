@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from tinydb import TinyDB
+from tinydb import Query, TinyDB
 
 # from task_oriented_dataset_search.embedding.embedder import SentenceTransformerEmbedder
 from task_oriented_dataset_search.embedding.indexer import FaissIndexer
@@ -156,4 +156,35 @@ class EmbeddingPipeline:
                 logger.warning("No datasets found in DB to index.")
         except Exception as e:
             logger.error(f"Error during embed_all process: {e}", exc_info=True)
+            raise
+
+    def update_embeddings(self, db_path: str, new_document_fingerprints: List[str]):
+        logger.info(f"Starting incremental embedding for {len(new_document_fingerprints)} new documents.")
+        if not new_document_fingerprints:
+            return
+
+        try:
+            db = TinyDB(db_path)
+            datasets_tbl = db.table("datasets")
+            tasks_tbl = db.table("tasks")
+            DatasetQ = Query()
+            TaskQ = Query()
+
+            new_datasets = datasets_tbl.search(DatasetQ.document_id.one_of(new_document_fingerprints))
+            if new_datasets:
+                logger.info(f"Found {len(new_datasets)} new datasets to index.")
+                self.index_datasets(new_datasets)
+            else:
+                logger.info("No new datasets found to index.")
+
+            new_dataset_ids = [d['id'] for d in new_datasets]
+            new_tasks = tasks_tbl.search(TaskQ.dataset_id.one_of(new_dataset_ids))
+            if new_tasks:
+                logger.info(f"Found {len(new_tasks)} new tasks to index.")
+                self.index_tasks(new_tasks)
+            else:
+                logger.info("No new tasks found to index.")
+
+        except Exception as e:
+            logger.error(f"Error during incremental embedding process: {e}", exc_info=True)
             raise

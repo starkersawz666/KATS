@@ -1,7 +1,7 @@
 import logging
 import os
 import networkx as nx
-from tinydb import TinyDB
+from tinydb import Query, TinyDB
 
 logger = logging.getLogger(__name__)
 
@@ -117,3 +117,56 @@ class GraphBuilder:
         self.graph = task_sim_graph
         self.save_graph()
         logger.info("Finished building and saving task similarity graph.")
+
+    def update_basic_graph(self, new_document_fingerprints: list[str]):
+        logger.info(f"Incrementally updating basic graph with {len(new_document_fingerprints)} new documents...")
+        if not new_document_fingerprints:
+            logger.info("No new documents to add to the graph. Skipping.")
+            return
+
+        # The graph is already loaded in the constructor.
+        # Query for new entities related to the new documents.
+        documents_tbl = self.db.table("documents")
+        datasets_tbl = self.db.table("datasets")
+        tasks_tbl = self.db.table("tasks")
+        DocQ, DatasetQ, TaskQ = Query(), Query(), Query()
+
+        new_docs = documents_tbl.search(DocQ.id.one_of(new_document_fingerprints))
+        new_datasets = datasets_tbl.search(DatasetQ.document_id.one_of(new_document_fingerprints))
+        new_dataset_ids = [ds.get("id") for ds in new_datasets if ds.get("id")]
+        new_tasks = tasks_tbl.search(TaskQ.dataset_id.one_of(new_dataset_ids))
+
+        logger.info(f"Found {len(new_docs)} new docs, {len(new_datasets)} new datasets, {len(new_tasks)} new tasks.")
+
+        # Add new nodes and edges
+        for doc in new_docs:
+            doc_id = doc.get("id")
+            self._add_node_if_not_exists(doc_id, type="document")
+
+        for ds in new_datasets:
+            ds_id = ds.get("id")
+            doc_id = ds.get("document_id")
+            self._add_node_if_not_exists(ds_id, type="dataset")
+            if (
+                doc_id
+                and ds_id
+                and self.graph.has_node(doc_id)
+                and self.graph.has_node(ds_id)
+            ):
+                if not self.graph.has_edge(doc_id, ds_id):
+                    self.graph.add_edge(doc_id, ds_id, type="contains_dataset")
+
+        for task in new_tasks:
+            task_id = task.get("id")
+            ds_id = task.get("dataset_id")
+            self._add_node_if_not_exists(task_id, type="task")
+            if (
+                ds_id
+                and task_id
+                and self.graph.has_node(ds_id)
+                and self.graph.has_node(task_id)
+            ):
+                if not self.graph.has_edge(ds_id, task_id):
+                    self.graph.add_edge(ds_id, task_id, type="used_for_task")
+        
+        logger.info("Basic graph updated with new entities.")

@@ -61,6 +61,7 @@ class TaskMerger:
             logger.error(f"Parquet file not found: {self.task_parquet_path}")
             raise FileNotFoundError(f"Parquet file not found: {self.task_parquet_path}")
         df = pd.read_parquet(self.task_parquet_path)
+        # df = pd.read_parquet(self.task_parquet_path).set_index("hex_id")
         df["embedding"] = df["embedding"].apply(lambda x: np.array(x, dtype="float32"))
 
         db = TinyDB(self.db_path)
@@ -70,6 +71,7 @@ class TaskMerger:
         }
 
         int64_to_hex = pd.Series(df.hex_id.values, index=df.int64_id).to_dict()
+        df.set_index("hex_id", inplace=True)
         logger.info(f"Loaded {len(df)} tasks and {len(hex_to_keywords)} keyword sets.")
         return df, int64_to_hex, hex_to_keywords
 
@@ -155,3 +157,74 @@ class TaskMerger:
                     merged_count += 1
 
         logger.info(f"Merged {merged_count} tasks based on similarity.")
+
+    def merge_new_tasks(self, new_task_hex_ids: list[str]):
+        logger.info(f"Starting incremental task merging for {len(new_task_hex_ids)} new tasks...")
+        if not new_task_hex_ids or self.task_df.empty:
+            logger.warning("No new tasks or task data found to merge.")
+            return
+
+        # Filter the DataFrame to get only the new tasks' data
+        new_tasks_df = self.task_df[self.task_df.index.isin(new_task_hex_ids)]
+        if new_tasks_df.empty:
+            logger.warning("No data found for the new task IDs in the Parquet file.")
+            return
+            
+        new_vectors = np.stack(new_tasks_df["embedding"].tolist())
+        
+        # Search for neighbors in the complete Faiss index
+        k = min(self.max_merge, self.faiss_index.ntotal)
+        D, I = self.faiss_index.search(new_vectors, k)
+
+        merged_count = 0
+        added_edges = set()
+
+        for idx, hex_id_1 in enumerate(new_tasks_df.index):
+            if not self.graph.has_node(hex_id_1):
+                continue
+
+            keywords1 = self.hex_to_keywords_map.get(hex_id_1, set())
+
+            # Iterate through the neighbors found by Faiss
+            for j, int64_id_2 in enumerate(I[idx]):
+                similarity = D[idx, j]
+                if int64_id_2 == -1 or similarity < self.weak_similarity_threshold:
+                    continue
+
+                hex_id_2 = self.int64_to_hex_map.get(int64_id_2)
+                if (
+                    not hex_id_2
+                    or hex_id_1 == hex_id_2
+                    or not self.graph.has_node(hex_id_2)
+                ):
+                    continue
+
+                edge_tuple = tuple(sorted((hex_id_1, hex_id_2)))
+                if edge_tuple in added_edges or self.graph.has_edge(hex_id_1, hex_id_2):
+                    continue
+
+                keywords2 = self.hex_to_keywords_map.get(hex_id_2, set())
+                
+                add_edge = False
+                weight = similarity
+
+                if similarity > self.strong_similarity_threshold:
+                    add_edge = True
+                    weight = 1.0
+                else:
+                    overlap = self._calculate_keyword_overlap(keywords1, keywords2)
+                    if overlap >= self.keyword_overlap_threshold:
+                        add_edge = True
+                        weight = 1.0
+                    else:
+                        add_edge = True
+                        weight = similarity
+
+                if add_edge:
+                    self.graph.add_edge(
+                        hex_id_1, hex_id_2, weight=weight, type="similar_task"
+                    )
+                    added_edges.add(edge_tuple)
+                    merged_count += 1
+
+        logger.info(f"Incrementally added {merged_count} new similarity edges for tasks.")

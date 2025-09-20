@@ -15,7 +15,7 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
 torch = "^2.5.0"
-transformers = ">=4.29.0,<4.30.0"
+transformers = "^4.29.0"
 sentence-transformers = "^2.2.2"
 faiss-cpu = "^1.7.4"
 numpy = "^1.24.3"
