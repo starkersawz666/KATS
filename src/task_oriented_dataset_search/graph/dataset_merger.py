@@ -97,7 +97,12 @@ class DatasetMerger:
 
     def _load_graph(self) -> nx.Graph:
         logger.info(f"Loading graph for dataset merging from: {self.graph_path}")
-        return nx.read_graphml(self.graph_path)
+        graph = nx.read_graphml(self.graph_path)
+        for node_id, data in graph.nodes(data=True):
+            if "aliases" in data and isinstance(data["aliases"], str):
+                aliases_list = [alias.strip() for alias in data["aliases"].split(',') if alias.strip()]
+                data["aliases"] = aliases_list
+        return graph
 
     def _load_alias_dict(self) -> Dict[str, str]:
         logger.debug(f"Loading alias dictionary ({self.alias_dict_name})...")
