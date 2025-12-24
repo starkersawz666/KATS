@@ -8,7 +8,7 @@
 Knowledge graph-Augmented Task-oriented dataset Search (KATS) is a system designed to help researchers and developers discover relevant datasets by describing their specific tasks. It uses Large Language Models, vector embeddings, and knowledge graphs to automatically process a corpus of documents (e.g. academic papers), extract information about datasets, and build a searchable index. Users can then query this index using natural language task descriptions to find suitable datasets.
 
 <p align="center">
-  <img align="center" src="./docs/images/system_flowchart.jpg" />
+  <img align="center" src="./docs/images/system_flow_2.pdf" />
 </p>
 <p align="center">
   <b>Figure 1:</b> Overall Architecture of the KATS System
