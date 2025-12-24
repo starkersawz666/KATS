@@ -2,13 +2,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import json
 import logging
-import math
 import os
 from pathlib import Path
 import time
 from typing import List, Set
-
 from tinydb import Query, TinyDB
+from uuid import uuid5, NAMESPACE_URL
+import pandas as pd
+import faiss
 
 from task_oriented_dataset_search.embedding.embedder import (
     OpenAIAPITextEmbedder,
@@ -144,25 +145,31 @@ class TodsEngine:
             try:
                 return set(json.load(f))
             except json.JSONDecodeError:
-                logger.warning("Could not parse processed_files_manifest.json, starting fresh.")
+                logger.warning(
+                    "Could not parse processed_files_manifest.json, starting fresh."
+                )
                 return set()
-            
+
     def _save_processed_fingerprints(self, fingerprints: Set[str]) -> None:
         with open(self.processed_files_manifest_path, "w", encoding="utf-8") as f:
             json.dump(list(fingerprints), f, indent=4)
-    
+
     def _identify_new_files(self, input_folder: str) -> List[Path]:
         logger.info("Identifying new documents...")
         cache = CacheManager(self.cfg.cache_root)
         processed_fingerprints = self._load_processed_fingerprints()
-        logger.info(f"Found {len(processed_fingerprints)} already processed documents in manifest.")
-        
+        logger.info(
+            f"Found {len(processed_fingerprints)} already processed documents in manifest."
+        )
+
         all_files = [p for p in Path(input_folder).rglob("*") if p.is_file()]
         new_files_to_process = []
-        
+
         with ThreadPoolExecutor(self.cfg.preprocess_workers) as exe:
-            fingerprint_futures = {exe.submit(cache.fingerprint_file, str(p)): p for p in all_files}
-            
+            fingerprint_futures = {
+                exe.submit(cache.fingerprint_file, str(p)): p for p in all_files
+            }
+
             for future in as_completed(fingerprint_futures):
                 file_path = fingerprint_futures[future]
                 try:
@@ -174,7 +181,6 @@ class TodsEngine:
 
         logger.info(f"Identified {len(new_files_to_process)} new documents to process.")
         return new_files_to_process
-
 
     def _get_searcher(self) -> Searcher:
         if self.searcher_instance is None:
@@ -460,15 +466,19 @@ class TodsEngine:
         logger.info("--- STEP 9: Creating Processed Files Manifest ---")
         all_processed_fingerprints = set()
         for file_path in files:
-             if file_path.is_file():
+            if file_path.is_file():
                 try:
                     fingerprint = cache.fingerprint_file(str(file_path))
                     all_processed_fingerprints.add(fingerprint)
                 except Exception as e:
-                    logger.warning(f"Could not compute fingerprint for {file_path} during manifest creation: {e}")
-        
+                    logger.warning(
+                        f"Could not compute fingerprint for {file_path} during manifest creation: {e}"
+                    )
+
         self._save_processed_fingerprints(all_processed_fingerprints)
-        logger.info(f"Manifest created with {len(all_processed_fingerprints)} processed files.")
+        logger.info(
+            f"Manifest created with {len(all_processed_fingerprints)} processed files."
+        )
 
         logger.info("Build process completed successfully.")
 
@@ -516,7 +526,7 @@ class TodsEngine:
         )
         logger.info("QA process finished.")
         return answer
-    
+
     def _process_and_import_new_files(self, new_files: List[Path]) -> List[str]:
         logger.info("Processing, extracting, and importing new documents...")
         if not new_files:
@@ -524,7 +534,7 @@ class TodsEngine:
 
         cfg = self.cfg
         cache = CacheManager(cfg.cache_root)
-        
+
         logger.info(f"Submitting {len(new_files)} new files for preprocessing.")
         processed_fingerprints = []
         with ThreadPoolExecutor(cfg.preprocess_workers) as exe:
@@ -537,18 +547,21 @@ class TodsEngine:
                     logger.debug(f"Successfully preprocessed: {file_path}")
                 except Exception as e:
                     logger.error(f"Failed to preprocess {file_path}: {e}")
-        
+
         extractor = StandardExtractor(self.llm_client)
         pre_dir = Path(cfg.cache_root) / "preprocessing"
-        
+
         successful_fingerprints = []
+
         def worker(fingerprint: str):
             txt_path = pre_dir / f"{fingerprint}.txt"
             last_exc = None
             delay = cfg.retry_initial_delay
             for attempt in range(1, cfg.retry_limit + 1):
                 try:
-                    logger.debug(f"Attempt {attempt}/{cfg.retry_limit} to extract {fingerprint}")
+                    logger.debug(
+                        f"Attempt {attempt}/{cfg.retry_limit} to extract {fingerprint}"
+                    )
                     extract_file(str(txt_path), extractor, cache)
                     return fingerprint
                 except Exception as e:
@@ -561,18 +574,24 @@ class TodsEngine:
                     )
                     time.sleep(delay)
                     delay = min(delay * 2, cfg.retry_max_delay)
-            logger.error(f"Extraction failed for {fingerprint} after {cfg.retry_limit} attempts: {last_exc}")
+            logger.error(
+                f"Extraction failed for {fingerprint} after {cfg.retry_limit} attempts: {last_exc}"
+            )
             return None
 
-        logger.info(f"Submitting {len(processed_fingerprints)} preprocessed files for extraction.")
+        logger.info(
+            f"Submitting {len(processed_fingerprints)} preprocessed files for extraction."
+        )
         with ThreadPoolExecutor(cfg.extract_workers) as exe:
             futures = {exe.submit(worker, fp): fp for fp in processed_fingerprints}
             for fut in as_completed(futures):
                 result_fp = fut.result()
                 if result_fp:
                     successful_fingerprints.append(result_fp)
-        
-        logger.info(f"Importing {len(successful_fingerprints)} new extractions into the database.")
+
+        logger.info(
+            f"Importing {len(successful_fingerprints)} new extractions into the database."
+        )
         importer = TinyDBImporter(db_path=cfg.db_path)
         ext_dir = Path(cfg.cache_root) / "extraction"
         for fp in successful_fingerprints:
@@ -580,12 +599,14 @@ class TodsEngine:
             try:
                 importer.import_file(json_path)
             except Exception as e:
-                logger.error(f"Failed to import {json_path.name} into database: {e}")   
+                logger.error(f"Failed to import {json_path.name} into database: {e}")
                 successful_fingerprints.remove(fp)
-                
-        logger.info(f"Successfully processed and imported {len(successful_fingerprints)} new documents.")
+
+        logger.info(
+            f"Successfully processed and imported {len(successful_fingerprints)} new documents."
+        )
         return successful_fingerprints
-    
+
     def _update_embeddings_and_indices(self, successful_fingerprints: List[str]):
         logger.info("Incrementally updating vector embeddings and indices...")
         if not successful_fingerprints:
@@ -597,7 +618,7 @@ class TodsEngine:
         embedder = OpenAIAPITextEmbedder(
             api_key=self.cfg.api_key, api_base=self.cfg.api_base
         )
-        
+
         embedding_pipeline = EmbeddingPipeline(
             embedder,
             task_index_path=cfg.faiss_tasks_index_path,
@@ -605,7 +626,7 @@ class TodsEngine:
             task_parquet_path=cfg.task_parquet_path,
             dataset_parquet_path=cfg.dataset_parquet_path,
         )
-        
+
         embedding_pipeline.update_embeddings(cfg.db_path, successful_fingerprints)
         logger.info("Vector embeddings and indices updated successfully.")
 
@@ -618,18 +639,20 @@ class TodsEngine:
         cfg = self.cfg
         cache = CacheManager(cfg.cache_root)
         db = TinyDB(cfg.db_path)
-        
+
         DatasetQ, TaskQ = Query(), Query()
-        new_datasets = db.table("datasets").search(DatasetQ.document_id.one_of(successful_fingerprints))
-        new_dataset_ids = [d['id'] for d in new_datasets]
+        new_datasets = db.table("datasets").search(
+            DatasetQ.document_id.one_of(successful_fingerprints)
+        )
+        new_dataset_ids = [d["id"] for d in new_datasets]
         new_tasks = db.table("tasks").search(TaskQ.dataset_id.one_of(new_dataset_ids))
-        new_task_ids = [t['id'] for t in new_tasks]
+        new_task_ids = [t["id"] for t in new_tasks]
 
         logger.info("Updating basic graph structure...")
         graph_builder = GraphBuilder(
             db_path=cfg.db_path,
             graph_path=cfg.graph_processed_path,
-            save_path=cfg.graph_processed_path
+            save_path=cfg.graph_processed_path,
         )
         graph_builder.update_basic_graph(successful_fingerprints)
         graph_builder.save_graph()
@@ -673,25 +696,127 @@ class TodsEngine:
             save_path=cfg.graph_tasks_path,
         )
         final_graph_builder.build_and_save_task_similarity_graph()
-        
+
         logger.info("Knowledge Graph updated successfully.")
 
     def update(self, input_folder: str):
         new_files = self._identify_new_files(input_folder)
         if not new_files:
             return
-        
+
         successful_fingerprints = self._process_and_import_new_files(new_files)
         if not successful_fingerprints:
-            logger.info("No new documents were successfully processed. Update finished.")
+            logger.info(
+                "No new documents were successfully processed. Update finished."
+            )
             return
-            
+
         self._update_embeddings_and_indices(successful_fingerprints)
-        
+
         self._update_knowledge_graph(successful_fingerprints)
 
         processed_fingerprints = self._load_processed_fingerprints()
         processed_fingerprints.update(successful_fingerprints)
         self._save_processed_fingerprints(processed_fingerprints)
-        
-        logger.info(f"Incremental update process complete. {len(successful_fingerprints)} documents added.")
+
+        logger.info(
+            f"Incremental update process complete. {len(successful_fingerprints)} documents added."
+        )
+
+    def add_dataset_from_description(
+        self,
+        description: str,
+        title: str = "",
+        link: str = "",
+        copy_top_k: int = 1,
+    ):
+        text = f"{title} {description}".strip()
+        embedder = OpenAIAPITextEmbedder(
+            api_key=self.cfg.api_key, api_base=self.cfg.api_base
+        )
+        vector = embedder.embed([text])[0].astype("float32").reshape(1, -1)
+        ds_index = faiss.read_index(self.cfg.faiss_datasets_index_path)
+        k = min(copy_top_k, ds_index.ntotal)
+        distances, int64_ids = ds_index.search(vector, k)
+
+        df_ds = pd.read_parquet(self.cfg.dataset_parquet_path)
+        id_map = pd.Series(df_ds.hex_id.values, index=df_ds.int64_id).to_dict()
+        nearest_hex_ids = [id_map[int_id] for int_id in int64_ids[0] if int_id != -1]
+
+        new_ds_id = uuid5(NAMESPACE_URL, f"{title}:{description}").hex
+        db = TinyDB(self.cfg.db_path)
+        datasets_tbl = db.table("datasets")
+        tasks_tbl = db.table("tasks")
+        datasets_tbl.insert(
+            {
+                "id": new_ds_id,
+                "document_id": None,
+                "title": title,
+                "description": description,
+                "link": link,
+            }
+        )
+
+        new_tasks = []
+        for ds_id in nearest_hex_ids:
+            for task in tasks_tbl.search(Query().dataset_id == ds_id):
+                task_desc = task["task_description"]
+                keywords = task.get("keywords", "")
+                new_task_id = uuid5(NAMESPACE_URL, f"{new_ds_id}:{task_desc}").hex
+                tasks_tbl.insert(
+                    {
+                        "id": new_task_id,
+                        "dataset_id": new_ds_id,
+                        "task_description": task_desc,
+                        "keywords": keywords,
+                    }
+                )
+                new_tasks.append({"id": new_task_id, "task_description": task_desc})
+
+        embedding_pipeline = EmbeddingPipeline(
+            embedder,
+            task_index_path=self.cfg.faiss_tasks_index_path,
+            dataset_index_path=self.cfg.faiss_datasets_index_path,
+            task_parquet_path=self.cfg.task_parquet_path,
+            dataset_parquet_path=self.cfg.dataset_parquet_path,
+        )
+        embedding_pipeline.index_datasets(
+            [{"id": new_ds_id, "title": title, "description": description}]
+        )
+        if new_tasks:
+            embedding_pipeline.index_tasks(new_tasks)
+
+        graph_builder = GraphBuilder(
+            db_path=self.cfg.db_path,
+            graph_path=self.cfg.graph_processed_path,
+            save_path=self.cfg.graph_processed_path,
+        )
+        graph = graph_builder.get_graph()
+        graph.add_node(new_ds_id, type="dataset")
+        for task in new_tasks:
+            tid = task["id"]
+            graph.add_node(tid, type="task")
+            graph.add_edge(new_ds_id, tid, type="used_for_task")
+        graph_builder.save_graph()
+
+        task_merger = TaskMerger(
+            db_path=self.cfg.db_path,
+            graph_path=self.cfg.graph_processed_path,
+            graph_processed_path=self.cfg.graph_processed_path,
+            task_faiss_path=self.cfg.faiss_tasks_index_path,
+            task_parquet_path=self.cfg.task_parquet_path,
+        )
+        task_merger.merge_new_tasks([t["id"] for t in new_tasks])
+        task_merger.save_graph()
+        dataset_merger = DatasetMerger(
+            db_path=self.cfg.db_path,
+            graph_path=self.cfg.graph_processed_path,
+            graph_processed_path=self.cfg.graph_processed_path,
+            dataset_faiss_path=self.cfg.faiss_datasets_index_path,
+            dataset_parquet_path=self.cfg.dataset_parquet_path,
+            llm_client=self.llm_client,
+            cache_manager=CacheManager(self.cfg.cache_root),
+        )
+        dataset_merger.merge_new_datasets([new_ds_id])
+        dataset_merger.save_graph()
+        return new_ds_id, nearest_hex_ids
