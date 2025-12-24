@@ -113,9 +113,11 @@ This project is licensed under the [MIT License](LICENSE).
 
 If you find this work useful, please kindly cite our paper:
 
+```
 @article{wei2025revisiting,
 title={Revisiting Task-Oriented Dataset Search in the Era of Large Language Models: Challenges, Benchmark, and Solution},
 author={Wei, Zixin and Guo, Yucan and Li, Jinyang and Han, Xiaolin and Jin, Xiaolong and Ma, Chenhao},
 journal={arXiv preprint arXiv:2512.15363},
 year={2025}
 }
+```
