@@ -1,6 +1,7 @@
 # KATS: Knowledge graph-Augmented Task-oriented dataset Search
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![](https://img.shields.io/badge/cs.DB-2512.15363-B31C1C?logo=arxiv&logoColor=B31C1C)](https://arxiv.org/abs/2512.15363)
 
 <!-- [![Last Commit](https://img.shields.io/github/commit-activity/m/starkersawz666/task-oriented-dataset-search)](https://github.com/starkersawz666/KATS) -->
 
@@ -97,7 +98,7 @@ Make sure you have set your `OPENAI_API_KEY` environment variable, or deployed y
 ## Our future plans 🏹
 
 - [ ] Detailed README;
-- [ ] Methods for adding knowledge to KG;
+- ✅ Methods for adding knowledge to KG;
 - [ ] More LLM presets, such as AZURE and locally deployed models.
 
 If you have any questions or suggestions, please feel free to open an issue or pull request.
@@ -109,3 +110,12 @@ File an issue or contact us: [Zixin Wei](mailto:zixinwei1@link.cuhk.edu.cn), The
 ## License 📝
 
 This project is licensed under the [MIT License](LICENSE).
+
+If you find this work useful, please kindly cite our paper:
+
+@article{wei2025revisiting,
+title={Revisiting Task-Oriented Dataset Search in the Era of Large Language Models: Challenges, Benchmark, and Solution},
+author={Wei, Zixin and Guo, Yucan and Li, Jinyang and Han, Xiaolin and Jin, Xiaolong and Ma, Chenhao},
+journal={arXiv preprint arXiv:2512.15363},
+year={2025}
+}
