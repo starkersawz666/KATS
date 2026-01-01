@@ -97,7 +97,7 @@ Make sure you have set your `OPENAI_API_KEY` environment variable, or deployed y
 
 ## Our future plans 🏹
 
-- [ ] Detailed README;
+- ✅ Detailed documents;
 - ✅ Methods for adding knowledge to KG;
 - [ ] More LLM presets, such as AZURE and locally deployed models.
 
@@ -115,9 +115,9 @@ If you find this work useful, please kindly cite our paper:
 
 ```
 @article{wei2025revisiting,
-title={Revisiting Task-Oriented Dataset Search in the Era of Large Language Models: Challenges, Benchmark, and Solution},
-author={Wei, Zixin and Guo, Yucan and Li, Jinyang and Han, Xiaolin and Jin, Xiaolong and Ma, Chenhao},
-journal={arXiv preprint arXiv:2512.15363},
-year={2025}
+  title={Revisiting Task-Oriented Dataset Search in the Era of Large Language Models: Challenges, Benchmark, and Solution},
+  author={Wei, Zixin and Guo, Yucan and Li, Jinyang and Han, Xiaolin and Jin, Xiaolong and Ma, Chenhao},
+  journal={arXiv preprint arXiv:2512.15363},
+  year={2025}
 }
 ```
